@@ -1,0 +1,143 @@
+-------------------------------------------------------------------------------
+--
+-- File: HdlSharedCommonHostRegs.vhd
+--
+-------------------------------------------------------------------------------
+-- (c) 2025 Copyright National Instruments Corporation
+-- 
+-- SPDX-License-Identifier: MIT
+-------------------------------------------------------------------------------
+--
+-- Purpose:
+-- This entity instantiates an array of HdlSharedHostRegister entities
+-- using a for-generate loop.
+--
+-------------------------------------------------------------------------------
+
+library IEEE;
+  use IEEE.std_logic_1164.all;
+  use IEEE.numeric_std.all;
+  
+library work;
+  use work.PkgNiUtilities.all;
+  use work.PkgCommunicationInterface.all;
+  
+entity HdlSharedCommonHostRegs is
+  generic (
+    kSignature : std_logic_vector(31 downto 0);
+    kVersion : std_logic_vector(31 downto 0);
+    kOldestCompatibleVersion : std_logic_vector(31 downto 0)
+  );
+  port(
+    BusClk : in std_logic;
+    aReset : in boolean;
+
+    -- Host Register Access
+    bRegPortIn  : in RegPortIn_t;
+    bRegPortOut : out RegPortOut_t
+  );  
+end entity HdlSharedCommonHostRegs;
+
+architecture rtl of HdlSharedCommonHostRegs is
+
+  constant kNumRegisters : natural := 4;
+  constant kSignatureAddr : natural := 15;
+  constant kVersionAddr : natural := 16;
+  constant kOldestCompatibleVersionAddr : natural := 17;
+  constant kScratchAddr : natural := 18;
+
+  type RegPortOutArray_t is array (natural range <>) of RegPortOut_t;
+  signal bRegPortOutArray : RegPortOutArray_t(0 to kNumRegisters-1);
+
+begin
+
+
+  SignatureReg: entity work.HdlSharedHostRegister
+    generic map(
+      kAddress => kSignatureAddr,
+      kDefault => kSignature,
+      kReadOnly => true
+    )
+    port map(
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOutArray(0),
+      bFpgaHostWrite => open,
+      bFpgaWrite     => false,
+      bFpgaDataIn    => (others => '0'),
+      bFpgaDataOut   => open
+    );
+
+
+  VersionReg: entity work.HdlSharedHostRegister
+    generic map(
+      kAddress => kVersionAddr,
+      kDefault => kVersion,
+      kReadOnly => true
+    )
+    port map(
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOutArray(1),
+      bFpgaHostWrite => open,
+      bFpgaWrite     => false,
+      bFpgaDataIn    => (others => '0'),
+      bFpgaDataOut   => open
+    );
+
+
+  OldestCompatibleVersionReg: entity work.HdlSharedHostRegister
+    generic map(
+      kAddress => kOldestCompatibleVersionAddr,
+      kDefault => kOldestCompatibleVersion,
+      kReadOnly => true
+    )
+    port map(
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOutArray(2),
+      bFpgaHostWrite => open,
+      bFpgaWrite     => false,
+      bFpgaDataIn    => (others => '0'),
+      bFpgaDataOut   => open
+    );
+
+  Scratch: entity work.HdlSharedHostRegister
+    generic map(
+      kAddress => kScratchAddr,
+      kDefault => x"00000000",
+      kReadOnly => false
+    )
+    port map(
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOutArray(3),
+      bFpgaHostWrite => open,
+      bFpgaWrite     => false,
+      bFpgaDataIn    => (others => '0'),
+      bFpgaDataOut   => open
+    );
+   
+
+  -- Combine register outputs using OR reduction
+  CombineOutputs: process(bRegPortOutArray)
+    variable vCombinedData : std_logic_vector(31 downto 0);
+    variable vCombinedValid : boolean;
+  begin
+    vCombinedData := (others => '0');
+    vCombinedValid := false;
+    
+    for i in 0 to kNumRegisters-1 loop
+      vCombinedData := vCombinedData or bRegPortOutArray(i).Data;
+      vCombinedValid := vCombinedValid or bRegPortOutArray(i).DataValid;
+    end loop;
+    
+    bRegPortOut.Data <= vCombinedData;
+    bRegPortOut.DataValid <= vCombinedValid;
+  end process CombineOutputs;
+
+end rtl;
