@@ -1,0 +1,2 @@
+HDL/HdlSharedHostRegister.vhd
+HDL/tb_HdlSharedHostRegister.vhd
