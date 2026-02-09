@@ -41,11 +41,10 @@ end entity HdlSharedCommonHostRegs;
 architecture rtl of HdlSharedCommonHostRegs is
 
   constant kNumRegisters : natural := 4;
-  constant kSignatureAddr : natural := 15;
-  constant kVersionAddr : natural := 16;
-  constant kOldestCompatibleVersionAddr : natural := 17;
-  constant kScratchAddr : natural := 18;
-
+  constant kSignatureAddr : natural := 0;
+  constant kVersionAddr : natural := 1;
+  constant kOldestCompatibleVersionAddr : natural := 2;
+  constant kScratchAddr : natural := 3;
   type RegPortOutArray_t is array (natural range <>) of RegPortOut_t;
   signal bRegPortOutArray : RegPortOutArray_t(0 to kNumRegisters-1);
 
