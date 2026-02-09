@@ -25,7 +25,7 @@ library work;
   
 entity HdlSharedHostRegister is
   generic(
-    kAddress  : natural := 0;
+    kOffset  : natural := 0;
     kDefault  : std_logic_vector(31 downto 0);
     kReadOnly : boolean := false
   );
@@ -53,7 +53,9 @@ architecture rtl of HdlSharedHostRegister is
   
 begin
 
-  bRegAddressed  <= (unsigned(bRegPortIn.Address) = kAddress);
+  -- Address from RegPortIn is in 32 bit words so we need to multiply by 4 (shift left by 2) to get
+  -- byte address and compare with our offset
+  bRegAddressed  <= (unsigned(bRegPortIn.Address & "00") = kOffset);
 
   -- Write process: we always grant the priority to the FPGA write
   -- so if both write signal are high at the same time, only the 

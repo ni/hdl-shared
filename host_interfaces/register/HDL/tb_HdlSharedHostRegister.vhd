@@ -34,7 +34,7 @@ architecture sim of tb_HdlSharedHostRegister is
 
   -- Constants
   constant kClkPeriod : time := 10 ns;
-  constant kTestAddress : natural := 16#42#;
+  constant kTestOffset : natural := 16#40#;  -- Byte address, must be multiple of 4
   constant kDefaultValue : std_logic_vector(31 downto 0) := x"DEADBEEF";
   
   -- DUT signals
@@ -67,7 +67,7 @@ begin
   -- DUT: Standard mode
   DUT_Standard: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kTestAddress,
+      kOffset => kTestOffset,
       kDefault => kDefaultValue,
       kReadOnly => false
     )
@@ -85,7 +85,7 @@ begin
   -- DUT: Host read-only mode
   DUT_ReadOnly: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kTestAddress,
+      kOffset => kTestOffset,
       kDefault => kDefaultValue,
       kReadOnly => true
     )
@@ -104,12 +104,13 @@ begin
   Stimulus: process
   
     -- Helper procedure for host write
+    -- addr parameter is byte address (offset), which gets converted to word address
     procedure HostWrite(
       constant addr : in natural;
       constant data : in std_logic_vector(31 downto 0)
     ) is
     begin
-      bRegPortIn.Address <= to_unsigned(addr, bRegPortIn.Address'length);
+      bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
       bRegPortIn.Data <= data;
       bRegPortIn.Wt <= true;
       wait until rising_edge(BusClk);
@@ -119,13 +120,14 @@ begin
     end procedure HostWrite;
 
     -- Helper procedure for host read
+    -- addr parameter is byte address (offset), which gets converted to word address
     procedure HostRead(
       constant addr : in natural;
       variable data : out std_logic_vector(31 downto 0);
       variable valid : out boolean
     ) is
     begin
-      bRegPortIn.Address <= to_unsigned(addr, bRegPortIn.Address'length);
+      bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
       bRegPortIn.Rd <= true;
       wait until rising_edge(BusClk);
       bRegPortIn.Rd <= false;
@@ -159,7 +161,7 @@ begin
     wait until rising_edge(BusClk);
     
     report "==== Test 1: Check default value ====";
-    HostRead(kTestAddress, vReadData, vReadValid);
+    HostRead(kTestOffset, vReadData, vReadValid);
     assert vReadValid report "FAIL: Read valid should be true" severity error;
     assert vReadData = kDefaultValue 
       report "FAIL: Default value mismatch. Expected: " & 
@@ -169,9 +171,9 @@ begin
     wait for kClkPeriod * 2;
 
     report "==== Test 2: Host write and read back ====";
-    HostWrite(kTestAddress, x"12345678");
+    HostWrite(kTestOffset, x"12345678");
     wait for kClkPeriod;
-    HostRead(kTestAddress, vReadData, vReadValid);
+    HostRead(kTestOffset, vReadData, vReadValid);
     assert vReadValid report "FAIL: Read valid should be true" severity error;
     assert vReadData = x"12345678" 
       report "FAIL: Host write failed. Expected: 12345678 Got: " & to_hstring(to_bitvector(vReadData)) 
@@ -189,7 +191,7 @@ begin
     wait for kClkPeriod * 2;
 
     report "==== Test 4: FPGA write visible to host ====";
-    HostRead(kTestAddress, vReadData, vReadValid);
+    HostRead(kTestOffset, vReadData, vReadValid);
     assert vReadData = x"ABCD1234" 
       report "FAIL: Host can't see FPGA write. Expected: ABCD1234 Got: " & to_hstring(to_bitvector(vReadData)) 
       severity error;
@@ -198,7 +200,7 @@ begin
 
     report "==== Test 5: Priority test - FPGA write wins ====";
     -- Set up simultaneous write
-    bRegPortIn.Address <= to_unsigned(kTestAddress, bRegPortIn.Address'length);
+    bRegPortIn.Address <= to_unsigned(kTestOffset / 4, bRegPortIn.Address'length);
     bRegPortIn.Data <= x"11111111";
     bRegPortIn.Wt <= true;
     bFpgaDataIn <= x"22222222";
@@ -214,7 +216,7 @@ begin
     wait for kClkPeriod * 2;
 
     report "==== Test 6: Wrong address should not respond ====";
-    HostRead(kTestAddress + 1, vReadData, vReadValid);
+    HostRead(kTestOffset + 4, vReadData, vReadValid);
     assert not vReadValid report "FAIL: Wrong address should not give valid response" severity error;
     report "PASS: Wrong address correctly ignored";
     wait for kClkPeriod * 2;
@@ -227,7 +229,7 @@ begin
       report "FAIL: FPGA write to read-only register failed" severity error;
     -- Try to write from host (should be ignored)
     assert not bFpgaHostWrite_ReadOnly report "FAIL: bFpgaHostWrite should be false before host write attempt" severity error;
-    HostWrite(kTestAddress, x"55555555");
+    HostWrite(kTestOffset, x"55555555");
     wait for kClkPeriod;
     -- Verify bFpgaHostWrite did NOT assert
     assert not bFpgaHostWrite_ReadOnly 
@@ -241,7 +243,7 @@ begin
 
     report "==== Test 8: bFpgaHostWrite pulse detection ====";
     assert not bFpgaHostWrite report "FAIL: bFpgaHostWrite should be false initially" severity error;
-    HostWrite(kTestAddress, x"99999999");
+    HostWrite(kTestOffset, x"99999999");
     -- bFpgaHostWrite should have pulsed during the write
     wait for kClkPeriod;
     assert not bFpgaHostWrite report "FAIL: bFpgaHostWrite should return to false" severity error;
@@ -249,13 +251,13 @@ begin
     wait for kClkPeriod * 2;
 
     report "==== Test 9: Reset behavior ====";
-    HostWrite(kTestAddress, x"FFFFFFFF");
+    HostWrite(kTestOffset, x"FFFFFFFF");
     wait for kClkPeriod;
     aReset <= true;
     wait for kClkPeriod * 3;
     aReset <= false;
     wait for kClkPeriod;
-    HostRead(kTestAddress, vReadData, vReadValid);
+    HostRead(kTestOffset, vReadData, vReadValid);
     assert vReadData = kDefaultValue 
       report "FAIL: Reset should restore default value. Expected: " & 
              to_hstring(to_bitvector(kDefaultValue)) & " Got: " & to_hstring(to_bitvector(vReadData)) 

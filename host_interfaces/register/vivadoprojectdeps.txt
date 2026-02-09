@@ -1,0 +1,2 @@
+../../deps/flexrio-deps/encrypted/PkgNiUtilities.vhd
+../../deps/flexrio-deps/encrypted/PkgCommunicationInterface.vhd

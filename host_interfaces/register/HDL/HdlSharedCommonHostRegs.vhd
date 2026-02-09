@@ -41,10 +41,10 @@ end entity HdlSharedCommonHostRegs;
 architecture rtl of HdlSharedCommonHostRegs is
 
   constant kNumRegisters : natural := 4;
-  constant kSignatureAddr : natural := 0;
-  constant kVersionAddr : natural := 1;
-  constant kOldestCompatibleVersionAddr : natural := 2;
-  constant kScratchAddr : natural := 3;
+  constant kSignatureOffset : natural := 0;
+  constant kVersionOffset : natural := 4;
+  constant kOldestCompatibleVersionOffset : natural := 8;
+  constant kScratchOffset : natural := 12;
   type RegPortOutArray_t is array (natural range <>) of RegPortOut_t;
   signal bRegPortOutArray : RegPortOutArray_t(0 to kNumRegisters-1);
 
@@ -53,7 +53,7 @@ begin
 
   SignatureReg: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kSignatureAddr,
+      kOffset => kSignatureOffset,
       kDefault => kSignature,
       kReadOnly => true
     )
@@ -71,7 +71,7 @@ begin
 
   VersionReg: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kVersionAddr,
+      kOffset => kVersionOffset,
       kDefault => kVersion,
       kReadOnly => true
     )
@@ -89,7 +89,7 @@ begin
 
   OldestCompatibleVersionReg: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kOldestCompatibleVersionAddr,
+      kOffset => kOldestCompatibleVersionOffset,
       kDefault => kOldestCompatibleVersion,
       kReadOnly => true
     )
@@ -106,7 +106,7 @@ begin
 
   Scratch: entity work.HdlSharedHostRegister
     generic map(
-      kAddress => kScratchAddr,
+      kOffset => kScratchOffset,
       kDefault => x"00000000",
       kReadOnly => false
     )
