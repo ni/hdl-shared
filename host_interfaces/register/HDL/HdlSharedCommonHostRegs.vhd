@@ -55,7 +55,8 @@ begin
     generic map(
       kOffset => kSignatureOffset,
       kDefault => kSignature,
-      kReadOnly => true
+      kReadOnly => true,
+      kUseFpgaAck => false
     )
     port map(
       BusClk         => BusClk,
@@ -63,6 +64,7 @@ begin
       bRegPortIn     => bRegPortIn,
       bRegPortOut    => bRegPortOutArray(0),
       bFpgaHostWrite => open,
+      bFpgaAck       => false,
       bFpgaWrite     => false,
       bFpgaDataIn    => (others => '0'),
       bFpgaDataOut   => open
@@ -73,7 +75,8 @@ begin
     generic map(
       kOffset => kVersionOffset,
       kDefault => kVersion,
-      kReadOnly => true
+      kReadOnly => true,
+      kUseFpgaAck => false
     )
     port map(
       BusClk         => BusClk,
@@ -81,6 +84,7 @@ begin
       bRegPortIn     => bRegPortIn,
       bRegPortOut    => bRegPortOutArray(1),
       bFpgaHostWrite => open,
+      bFpgaAck       => false,
       bFpgaWrite     => false,
       bFpgaDataIn    => (others => '0'),
       bFpgaDataOut   => open
@@ -91,7 +95,8 @@ begin
     generic map(
       kOffset => kOldestCompatibleVersionOffset,
       kDefault => kOldestCompatibleVersion,
-      kReadOnly => true
+      kReadOnly => true,
+      kUseFpgaAck => false
     )
     port map(
       BusClk         => BusClk,
@@ -99,6 +104,7 @@ begin
       bRegPortIn     => bRegPortIn,
       bRegPortOut    => bRegPortOutArray(2),
       bFpgaHostWrite => open,
+      bFpgaAck       => false,
       bFpgaWrite     => false,
       bFpgaDataIn    => (others => '0'),
       bFpgaDataOut   => open
@@ -108,7 +114,8 @@ begin
     generic map(
       kOffset => kScratchOffset,
       kDefault => x"00000000",
-      kReadOnly => false
+      kReadOnly => false,
+      kUseFpgaAck => false
     )
     port map(
       BusClk         => BusClk,
@@ -116,27 +123,32 @@ begin
       bRegPortIn     => bRegPortIn,
       bRegPortOut    => bRegPortOutArray(3),
       bFpgaHostWrite => open,
+      bFpgaAck       => false,
       bFpgaWrite     => false,
       bFpgaDataIn    => (others => '0'),
       bFpgaDataOut   => open
     );
    
 
-  -- Combine register outputs using OR reduction
+  -- Combine register outputs using OR reduction for Data/DataValid, AND reduction for Ready
   CombineOutputs: process(bRegPortOutArray)
     variable vCombinedData : std_logic_vector(31 downto 0);
     variable vCombinedValid : boolean;
+    variable vCombinedReady : boolean;
   begin
     vCombinedData := (others => '0');
     vCombinedValid := false;
+    vCombinedReady := true;
     
     for i in 0 to kNumRegisters-1 loop
       vCombinedData := vCombinedData or bRegPortOutArray(i).Data;
       vCombinedValid := vCombinedValid or bRegPortOutArray(i).DataValid;
+      vCombinedReady := vCombinedReady and bRegPortOutArray(i).Ready;
     end loop;
     
     bRegPortOut.Data <= vCombinedData;
     bRegPortOut.DataValid <= vCombinedValid;
+    bRegPortOut.Ready <= vCombinedReady;
   end process CombineOutputs;
 
 end rtl;

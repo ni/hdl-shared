@@ -27,7 +27,8 @@ entity HdlSharedHostRegister is
   generic(
     kOffset  : natural := 0;
     kDefault  : std_logic_vector(31 downto 0);
-    kReadOnly : boolean := false
+    kReadOnly : boolean := false;
+    kUseFpgaAck : boolean := false
   );
   port(
     BusClk      : in std_logic;
@@ -39,6 +40,7 @@ entity HdlSharedHostRegister is
 
     -- FPGA Register Access
     bFpgaHostWrite    : out boolean;
+    bFpgaAck          : in boolean;
     bFpgaWrite        : in boolean;
     bFpgaDataIn       : in std_logic_vector(31 downto 0);
     bFpgaDataOut      : out std_logic_vector(31 downto 0)
@@ -50,6 +52,7 @@ architecture rtl of HdlSharedHostRegister is
 
   signal bRegData : std_logic_vector(31 downto 0);
   signal bRegAddressed : boolean;
+  signal bRegAddressedDly : boolean;  
   
 begin
 
@@ -100,8 +103,31 @@ begin
     end if;
   end process Reading;
 
-  -- Register is always ready to accept host requests
-  bRegPortOut.Ready <= true;
+  Ready:process (aReset, BusClk)
+  begin
+    if aReset then
+      bRegPortOut.Ready <= true;
+      bRegAddressedDly <= false;
+    elsif rising_edge(BusClk) then
+      bRegAddressedDly <= bRegAddressed;      
+      if kUseFpgaAck then
+        -- When using FPGA acknowledgment, deassert Ready when register becomes addressed
+        -- and hold it low until bFpgaAck asserts
+        if bFpgaAck then
+          -- Reassert ready when FPGA acknowledges
+          bRegPortOut.Ready <= true;
+        elsif bRegAddressed and not bRegAddressedDly then
+          -- Deassert ready when the register first becomes addressed
+          bRegPortOut.Ready <= false;
+        end if;
+      else
+        -- Register is always ready to accept host requests
+        bRegPortOut.Ready <= true;
+      end if;
+    end if;
+  end process Ready;
+
+
 
   -- Data is always available on the FPGA side when requested
   bFpgaDataOut <= bRegData;
