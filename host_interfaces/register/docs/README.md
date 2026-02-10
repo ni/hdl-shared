@@ -5,7 +5,7 @@ You can use the LabVIEW FPGA HDL Tools to generate a Vivado project for simulati
 Install the LabVIEW FPGA HDL Tools:
 pip install -r requirements.txt
 
-Run nihdl these commands:
+Run these nihdl commands:
 nihdl install-deps
 nihdl create-project
 nihdl launch-vivado
