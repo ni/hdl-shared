@@ -1,11 +1,11 @@
-# Contributing to \<reponame\> 
+# Contributing to HDL Shared
 
-Contributions to \<reponame\> are welcome from all!
+Contributions to HDL Shared are welcome from all!
 
-\<reponame\> is managed via [git](https://git-scm.com), with the canonical upstream
+HDL Shared is managed via [git](https://git-scm.com), with the canonical upstream
 repository hosted on [GitHub](https://github.com/ni/<reponame>/).
 
-\<reponame\> follows a pull-request model for development.  If you wish to
+HDL Shared follows a pull-request model for development.  If you wish to
 contribute, you will need to create a GitHub account, fork this project, push a
 branch with your changes to your project, and then submit a pull request.
 
