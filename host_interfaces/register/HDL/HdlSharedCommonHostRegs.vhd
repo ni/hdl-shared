@@ -9,8 +9,28 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
--- This entity instantiates an array of HdlSharedHostRegister entities
--- using a for-generate loop.
+-- This entity implements a fixed, standard set of four host-visible registers
+-- that provide design identity/version metadata plus a writable scratch location.
+--
+-- Register map (byte offsets):
+--   0x00 Signature (read-only)
+--     - Identifies the design/target image.
+--     - Used by host software to confirm it is communicating with the expected bitfile.
+--
+--   0x04 Version (read-only)
+--     - Current interface/implementation version for this design.
+--     - Used by host software to select compatible behavior/features.
+--
+--   0x08 Oldest Compatible Version (read-only)
+--     - Lowest host-side version that is still supported.
+--     - Enables forward/backward compatibility checks during startup.
+--
+--   0x0C Scratch (read/write)
+--     - General-purpose software-accessible test/debug register.
+--     - Can be used to validate host register access and simple control plumbing.
+--
+-- This block is intended to give every design a consistent baseline register
+-- interface for discovery, version gating, and bring-up diagnostics.
 --
 -------------------------------------------------------------------------------
 

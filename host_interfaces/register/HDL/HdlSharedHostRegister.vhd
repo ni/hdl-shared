@@ -10,8 +10,37 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
--- This entity implements a shared register that can be accessed by both the FPGA
--- and the host. It supports independent read and write operations from both sides.
+-- This entity implements one 32-bit shared register that is visible to both:
+--   1) the host (through RegPortIn/RegPortOut), and
+--   2) FPGA-side logic (through bFpga* ports).
+--
+-- RegPortIn/RegPortOut protocol details are documented in:
+--   register/docs/RegPort_Theory_of_Operation.md
+--
+-- Host-side behavior (high level):
+-- - Address decode compares the incoming register byte address against kOffset.
+-- - A host read at the matching address returns the current register value and pulses
+--   DataValid for one BusClk cycle.
+-- - A host write at the matching address updates the register unless kReadOnly=true.
+-- - bFpgaHostWrite pulses for one BusClk cycle whenever the host writes this register
+--   address (useful as an FPGA-side "host wrote me" event).
+--
+-- FPGA-side behavior:
+-- - bFpgaDataOut continuously reflects the current register contents.
+-- - When bFpgaWrite=true on a BusClk rising edge, bFpgaDataIn is written into the
+--   register.
+-- - FPGA writes have priority over host writes when both occur on the same clock edge.
+--
+-- Reset/default behavior:
+-- - On aReset, the register initializes to kDefault.
+-- - After reset, the register retains its value until modified by host or FPGA write.
+--
+-- Ready/acknowledgment behavior:
+-- - If kUseFpgaAck=false, Ready remains asserted (register is always ready).
+-- - If kUseFpgaAck=true, Ready deasserts when the register is newly addressed and stays
+--   low until bFpgaAck is asserted, then returns high.  Take special care when using this
+--   mode to avoid deadlock (e.g. FPGA must eventually assert bFpgaAck in response to a 
+--   host request or all subsequent host requests will be stalled).
 --
 -------------------------------------------------------------------------------
 

@@ -34,10 +34,28 @@ architecture sim of tb_HdlSharedHostRegister is
 
   -- Constants
   constant kClkPeriod : time := 10 ns;
+  -- Common host registers use fixed offsets: 0x00, 0x04, 0x08, 0x0C
+  constant kCommonSignatureValue : std_logic_vector(31 downto 0) := x"5349474E";
+  constant kCommonVersionValue : std_logic_vector(31 downto 0) := x"00010002";
+  constant kCommonOldestCompatibleValue : std_logic_vector(31 downto 0) := x"00010000";
+  constant kCommonSignatureOffset : natural := 16#00#;
+  constant kCommonVersionOffset : natural := 16#04#;
+  constant kCommonOldestCompatibleOffset : natural := 16#08#;
+  constant kCommonScratchOffset : natural := 16#0C#;
+
   constant kStandardOffset : natural := 16#40#;  -- Byte address 0x40 (64) for standard register
   constant kReadOnlyOffset : natural := 16#44#;  -- Byte address 0x44 (68) for read-only register
   constant kFpgaAckOffset : natural := 16#48#;   -- Byte address 0x48 (72) for FpgaAck register
+
+  constant kArrayNumRegisters : natural := 3;
+  constant kArrayBaseOffset : natural := 16#80#; -- Byte addresses 0x80, 0x84, 0x88
+  constant kArrayReg0Offset : natural := kArrayBaseOffset + 0;
+  constant kArrayReg1Offset : natural := kArrayBaseOffset + 4;
+  constant kArrayReg2Offset : natural := kArrayBaseOffset + 8;
   constant kDefaultValue : std_logic_vector(31 downto 0) := x"DEADBEEF";
+  constant kArrayDefaultValues : Slv32Ary_t(0 to kArrayNumRegisters-1) := (others => kDefaultValue);
+  constant kArrayReadOnly : BooleanVector(0 to kArrayNumRegisters-1) := (others => false);
+  constant kArrayUseFpgaAck : BooleanVector(0 to kArrayNumRegisters-1) := (others => false);
   
   -- DUT signals
   signal BusClk : std_logic := '0';
@@ -62,6 +80,15 @@ architecture sim of tb_HdlSharedHostRegister is
   signal bFpgaDataOut_FpgaAck : std_logic_vector(31 downto 0);
   signal bFpgaHostWrite_FpgaAck : boolean;
   signal bFpgaAck : boolean := false;
+
+  signal bRegPortOut_Common : RegPortOut_t;
+
+  signal bRegPortOut_Array : RegPortOut_t;
+  signal bFpgaHostWrite_Array : BooleanVector(0 to kArrayNumRegisters-1);
+  signal bFpgaAck_Array : BooleanVector(0 to kArrayNumRegisters-1) := (others => false);
+  signal bFpgaWrite_Array : BooleanVector(0 to kArrayNumRegisters-1) := (others => false);
+  signal bFpgaDataIn_Array : Slv32Ary_t(0 to kArrayNumRegisters-1) := (others => (others => '0'));
+  signal bFpgaDataOut_Array : Slv32Ary_t(0 to kArrayNumRegisters-1);
   
   -- Test control
   signal TestDone : boolean := false;
@@ -132,6 +159,39 @@ begin
       bFpgaDataOut   => bFpgaDataOut_FpgaAck
     );
 
+  DUT_CommonHostRegs: entity work.HdlSharedCommonHostRegs
+    generic map(
+      kSignature => kCommonSignatureValue,
+      kVersion => kCommonVersionValue,
+      kOldestCompatibleVersion => kCommonOldestCompatibleValue
+    )
+    port map(
+      BusClk      => BusClk,
+      aReset      => aReset,
+      bRegPortIn  => bRegPortIn,
+      bRegPortOut => bRegPortOut_Common
+    );
+
+  DUT_Array: entity work.HdlSharedHostRegisterArray
+    generic map(
+      kNumRegisters => kArrayNumRegisters,
+      kBaseAddress => kArrayBaseOffset,
+      kDefault => kArrayDefaultValues,
+      kReadOnly => kArrayReadOnly,
+      kUseFpgaAck => kArrayUseFpgaAck
+    )
+    port map(
+      BusClk       => BusClk,
+      aReset       => aReset,
+      bRegPortIn   => bRegPortIn,
+      bRegPortOut  => bRegPortOut_Array,
+      bFpgaHostWrite => bFpgaHostWrite_Array,
+      bFpgaAck     => bFpgaAck_Array,
+      bFpgaWrite   => bFpgaWrite_Array,
+      bFpgaDataIn  => bFpgaDataIn_Array,
+      bFpgaDataOut => bFpgaDataOut_Array
+    );
+
   -- Stimulus process
   Stimulus: process
   
@@ -162,11 +222,46 @@ begin
       bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
       bRegPortIn.Rd <= true;
       wait until rising_edge(BusClk);
-      bRegPortIn.Rd <= false;
-      wait until rising_edge(BusClk);
+      wait for 0 ns;
       data := bRegPortOut.Data;
       valid := bRegPortOut.DataValid;
+      bRegPortIn.Rd <= false;
+      wait until rising_edge(BusClk);
     end procedure HostRead;
+
+    -- Helper procedure for host read from common host regs DUT output
+    procedure HostReadCommon(
+      constant addr : in natural;
+      variable data : out std_logic_vector(31 downto 0);
+      variable valid : out boolean
+    ) is
+    begin
+      bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
+      bRegPortIn.Rd <= true;
+      wait until rising_edge(BusClk);
+      wait for 0 ns;
+      data := bRegPortOut_Common.Data;
+      valid := bRegPortOut_Common.DataValid;
+      bRegPortIn.Rd <= false;
+      wait until rising_edge(BusClk);
+    end procedure HostReadCommon;
+
+    -- Helper procedure for host read from register array DUT output
+    procedure HostReadArray(
+      constant addr : in natural;
+      variable data : out std_logic_vector(31 downto 0);
+      variable valid : out boolean
+    ) is
+    begin
+      bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
+      bRegPortIn.Rd <= true;
+      wait until rising_edge(BusClk);
+      wait for 0 ns;
+      data := bRegPortOut_Array.Data;
+      valid := bRegPortOut_Array.DataValid;
+      bRegPortIn.Rd <= false;
+      wait until rising_edge(BusClk);
+    end procedure HostReadArray;
 
     -- Helper procedure for FPGA write
     procedure FpgaWrite(
@@ -180,6 +275,20 @@ begin
       bFpgaDataIn <= (others => '0');
       wait until rising_edge(BusClk);
     end procedure FpgaWrite;
+
+    -- Helper procedure for FPGA write into array register i
+    procedure FpgaWriteArray(
+      constant idx : in natural;
+      constant data : in std_logic_vector(31 downto 0)
+    ) is
+    begin
+      bFpgaDataIn_Array(idx) <= data;
+      bFpgaWrite_Array(idx) <= true;
+      wait until rising_edge(BusClk);
+      bFpgaWrite_Array(idx) <= false;
+      bFpgaDataIn_Array(idx) <= (others => '0');
+      wait until rising_edge(BusClk);
+    end procedure FpgaWriteArray;
     
     variable vReadData : std_logic_vector(31 downto 0);
     variable vReadValid : boolean;
@@ -352,6 +461,73 @@ begin
       report "FAIL: FpgaAck register write failed. Expected: AAAA5555 Got: " & to_hstring(to_bitvector(bFpgaDataOut_FpgaAck)) 
       severity error;
     report "PASS: FPGA acknowledgment mode working correctly";
+    wait for kClkPeriod * 2;
+
+    CurrentTest <= 11;
+    report "==== Test 11: Common host registers ====";
+    HostReadCommon(kCommonSignatureOffset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Common signature read should be valid" severity error;
+    assert vReadData = kCommonSignatureValue
+      report "FAIL: Common signature mismatch" severity error;
+
+    HostReadCommon(kCommonVersionOffset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Common version read should be valid" severity error;
+    assert vReadData = kCommonVersionValue
+      report "FAIL: Common version mismatch" severity error;
+
+    HostReadCommon(kCommonOldestCompatibleOffset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Common oldest compatible read should be valid" severity error;
+    assert vReadData = kCommonOldestCompatibleValue
+      report "FAIL: Common oldest compatible mismatch" severity error;
+
+    HostReadCommon(kCommonScratchOffset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Common scratch default read should be valid" severity error;
+    assert vReadData = x"00000000"
+      report "FAIL: Common scratch default mismatch" severity error;
+
+    HostWrite(kCommonScratchOffset, x"CAFEBABE");
+    wait for kClkPeriod;
+    HostReadCommon(kCommonScratchOffset, vReadData, vReadValid);
+    assert vReadData = x"CAFEBABE"
+      report "FAIL: Common scratch host write/read failed" severity error;
+
+    HostWrite(kCommonSignatureOffset, x"FFFFFFFF");
+    wait for kClkPeriod;
+    HostReadCommon(kCommonSignatureOffset, vReadData, vReadValid);
+    assert vReadData = kCommonSignatureValue
+      report "FAIL: Common signature should remain read-only" severity error;
+    report "PASS: Common host registers exercised";
+    wait for kClkPeriod * 2;
+
+    CurrentTest <= 12;
+    report "==== Test 12: Host register array ====";
+    HostReadArray(kArrayReg0Offset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Array reg0 default read should be valid" severity error;
+    assert vReadData = kArrayDefaultValues(0)
+      report "FAIL: Array reg0 default mismatch" severity error;
+
+    HostReadArray(kArrayReg1Offset, vReadData, vReadValid);
+    assert vReadValid report "FAIL: Array reg1 default read should be valid" severity error;
+    assert vReadData = kArrayDefaultValues(1)
+      report "FAIL: Array reg1 default mismatch" severity error;
+
+    HostWrite(kArrayReg1Offset, x"1111AAAA");
+    wait for kClkPeriod;
+    HostReadArray(kArrayReg1Offset, vReadData, vReadValid);
+    assert vReadData = x"1111AAAA"
+      report "FAIL: Array host write/read on reg1 failed" severity error;
+
+    CurrentTest <= 13;
+    report "==== Test 13: FPGA register array ====";
+
+    FpgaWriteArray(2, x"2222BBBB");
+    wait for kClkPeriod;
+    assert bFpgaDataOut_Array(2) = x"2222BBBB"
+      report "FAIL: Array FPGA write on reg2 failed" severity error;
+    HostReadArray(kArrayReg2Offset, vReadData, vReadValid);
+    assert vReadData = x"2222BBBB"
+      report "FAIL: Host cannot read FPGA-written value on array reg2" severity error;
+    report "PASS: Host register array exercised";
     wait for kClkPeriod * 2;
 
     report "==== All tests completed ====";

@@ -9,8 +9,32 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
--- This entity instantiates an array of HdlSharedHostRegister entities
--- using a for-generate loop.
+-- This entity builds a bank of kNumRegisters independent 32-bit shared registers,
+-- each implemented by one HdlSharedHostRegister instance.
+--
+-- Addressing/model:
+-- - Register i is placed at byte address: kBaseAddress + (4 * i).
+-- - All generated registers observe the same host bus inputs (bRegPortIn).
+-- - Only the addressed register responds to a given host transaction.
+--
+-- Per-register configuration:
+-- - kDefault(i) sets the reset/default value for register i.
+-- - kReadOnly(i) controls whether host writes are blocked for register i.
+-- - kUseFpgaAck(i) controls per-register Ready/ack handshake behavior.
+-- - Assertions enforce that these arrays are indexed 0..kNumRegisters-1.
+--
+-- FPGA-side interface:
+-- - bFpgaWrite(i), bFpgaDataIn(i), bFpgaDataOut(i), bFpgaHostWrite(i), and
+--   bFpgaAck(i) are routed 1:1 to register i.
+-- - This allows FPGA logic to control and observe each register independently.
+--
+-- Host-side aggregated output behavior:
+-- - Data is the bitwise OR of all register Data outputs.
+-- - DataValid is the OR of all register DataValid outputs.
+-- - Ready is the AND of all register Ready outputs.
+--
+-- Since only one register should be addressed per transaction, OR-reduction of
+-- Data/DataValid provides a single shared response bus while preserving behavior.
 --
 -------------------------------------------------------------------------------
 
@@ -24,9 +48,11 @@ library work;
   
 entity HdlSharedHostRegisterArray is
   generic(
-    kNumRegisters : natural := 10;
-    kBaseAddress : natural := 0;
-    kDefault : std_logic_vector(31 downto 0) := (others => '0')
+    kNumRegisters : natural;
+    kBaseAddress : natural;
+    kDefault : Slv32Ary_t;
+    kReadOnly : BooleanVector;
+    kUseFpgaAck : BooleanVector
   );
   port(
     BusClk : in std_logic;
@@ -37,9 +63,11 @@ entity HdlSharedHostRegisterArray is
     bRegPortOut : out RegPortOut_t;    
 
     -- FPGA Register Access (array for kNumRegisters)
-    bFpgaWrite  : in boolean_vector(0 to kNumRegisters-1);
-    bFpgaDataIn : in slv32_array(0 to kNumRegisters-1);
-    bFpgaDataOut : out slv32_array(0 to kNumRegisters-1)
+    bFpgaHostWrite : out BooleanVector(0 to kNumRegisters-1);
+    bFpgaAck : in BooleanVector(0 to kNumRegisters-1);
+    bFpgaWrite  : in BooleanVector(0 to kNumRegisters-1);
+    bFpgaDataIn : in Slv32Ary_t(0 to kNumRegisters-1);
+    bFpgaDataOut : out Slv32Ary_t(0 to kNumRegisters-1)
   );  
 end entity HdlSharedHostRegisterArray;
 
@@ -50,57 +78,58 @@ architecture rtl of HdlSharedHostRegisterArray is
 
 begin
 
+  -- Generic consistency checks
+  assert kDefault'left = 0 and kDefault'length = kNumRegisters
+    report "kDefault must be indexed 0 to kNumRegisters-1"
+    severity failure;
+  assert kReadOnly'left = 0 and kReadOnly'length = kNumRegisters
+    report "kReadOnly must be indexed 0 to kNumRegisters-1"
+    severity failure;
+  assert kUseFpgaAck'left = 0 and kUseFpgaAck'length = kNumRegisters
+    report "kUseFpgaAck must be indexed 0 to kNumRegisters-1"
+    severity failure;
+
   -- Generate instances of HdlSharedHostRegister
   GenRegisters: for i in 0 to kNumRegisters-1 generate
     RegInst: entity work.HdlSharedHostRegister
       generic map(
-        kAddress => kBaseAddress + i,
-        kDefault => kDefault
+        kOffset => kBaseAddress + (4 * i),
+        kDefault => kDefault(i),
+        kReadOnly => kReadOnly(i),
+        kUseFpgaAck => kUseFpgaAck(i)
       )
       port map(
-        BusClk       => BusClk,
-        aReset       => aReset,
-        bRegPortIn   => bRegPortIn,
-        bRegPortOut  => bRegPortOutArray(i),
-        bFpgaWrite   => bFpgaWrite(i),
-        bFpgaDataIn  => bFpgaDataIn(i),
-        bFpgaDataOut => bFpgaDataOut(i)
+        BusClk         => BusClk,
+        aReset         => aReset,
+        bRegPortIn     => bRegPortIn,
+        bRegPortOut    => bRegPortOutArray(i),
+        bFpgaHostWrite => bFpgaHostWrite(i),
+        bFpgaAck       => bFpgaAck(i),
+        bFpgaWrite     => bFpgaWrite(i),
+        bFpgaDataIn    => bFpgaDataIn(i),
+        bFpgaDataOut   => bFpgaDataOut(i)
       );
   end generate GenRegisters;
 
-  -- Combine register outputs using OR reduction
+  -- Combine register outputs using OR reduction for Data/DataValid, AND reduction for Ready
   CombineOutputs: process(bRegPortOutArray)
     variable vCombinedData : std_logic_vector(31 downto 0);
     variable vCombinedValid : boolean;
+    variable vCombinedReady : boolean;
   begin
     vCombinedData := (others => '0');
     vCombinedValid := false;
+    vCombinedReady := true;
     
     for i in 0 to kNumRegisters-1 loop
       vCombinedData := vCombinedData or bRegPortOutArray(i).Data;
       vCombinedValid := vCombinedValid or bRegPortOutArray(i).DataValid;
+      vCombinedReady := vCombinedReady and bRegPortOutArray(i).Ready;
     end loop;
     
     bRegPortOut.Data <= vCombinedData;
     bRegPortOut.DataValid <= vCombinedValid;
+    bRegPortOut.Ready <= vCombinedReady;
   end process CombineOutputs;
 
 end rtl;
-
-
-
-  HdlSharedHostRegisterArray_inst : entity work.HdlSharedHostRegisterArray
-    generic map(
-      kNumRegisters => 8,
-      kBaseAddress  => 13,
-      kDefault      => (others => '0')
-    )
-    port map(
-      BusClk       => BusClk,
-      aReset       => aBusReset,
-      bRegPortIn   => bRegPortIn,
-      bRegPortOut  => bRegPortOutHdlRegArray,
-      bFpgaWrite   => bHdlRegArrayFpgaWrite,
-      bFpgaDataIn  => bHdlRegArrayFpgaDataIn,
-      bFpgaDataOut => bHdlRegArrayFpgaDataOut
-    );
