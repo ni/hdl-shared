@@ -38,12 +38,12 @@ This project contains shared code for HDL-to-Host registers.  The HDL examples c
 You can use the LabVIEW FPGA HDL Tools to generate a Vivado project for simulation.
 
 Install the LabVIEW FPGA HDL Tools:
-pip install -r requirements.txt
+* pip install -r requirements.txt
 
 Run these nihdl commands:
-nihdl install-deps
-nihdl create-project
-nihdl launch-vivado
+* nihdl install-deps
+* nihdl create-project
+* nihdl launch-vivado
 
 Then in Vivado, you can click Run Simulation to simulate the testbench
 
