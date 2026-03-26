@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Vivado v2021.1 (64-bit)
+# SW Build 3247384 on Thu Jun 10 19:36:33 MDT 2021
+# IP Build 3246043 on Fri Jun 11 00:30:35 MDT 2021
+# Start of session at: Wed Mar 25 08:08:07 2026
+# Process ID: 50760
+# Current directory: C:/dev/github8/hdl-shared/host_interfaces/fifo/VivadoProject/HdlFifo.runs/synth_1
+# Command line: vivado.exe -log tb_HdlSharedHostFifo.vhd.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source tb_HdlSharedHostFifo.vhd.tcl
+# Log file: C:/dev/github8/hdl-shared/host_interfaces/fifo/VivadoProject/HdlFifo.runs/synth_1/tb_HdlSharedHostFifo.vhd.vds
+# Journal file: C:/dev/github8/hdl-shared/host_interfaces/fifo/VivadoProject/HdlFifo.runs/synth_1\vivado.jou
+#-----------------------------------------------------------
+source tb_HdlSharedHostFifo.vhd.tcl -notrace

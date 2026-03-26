@@ -1,0 +1,29 @@
+﻿=== tb_HdlSharedHostFifo hierarchy: PkgNiSim usage ===
+
+Hierarchy files visited: 66
+Total PkgNiSim hits: 14
+Direct use work.PkgNiSim.all hits: 4
+
+--- ALL HITS ---
+
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgByteArray.vhd:40: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:3: -- File: PkgNiSim.vhd
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:116: package PkgNiSim is
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:209: end PkgNiSim;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:211: package body PkgNiSim is
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:661: end PkgNiSim;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:18: -- to maintain the shared variable verbosity in the package PkgNiSim, the
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:22: -- except in PkgNiSim itself.
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgScoreboard.vhd:59: -- External API (Defined in PkgNiSim)
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgScoreboard.vhd:75: -- is provided in PkgNiSim. Since RegisterCover is a method with constant
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgScoreboard.vhd:323: -- procedure that waits within a protected type, PkgNiSim defines an external
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgXReg.vhd:76: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_nidmaip.1.1.0d14\CommonFiles\Source\DMAC\PkgBaggageRegTypeRegMap.vhd:25: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_nidmaip.1.1.0d14\CommonFiles\Source\DMAC\PkgNiDmaRegMap.vhd:26: use work.PkgNiSim.all;
+
+--- DIRECT USE HITS ---
+
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgByteArray.vhd:40: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgXReg.vhd:76: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_nidmaip.1.1.0d14\CommonFiles\Source\DMAC\PkgBaggageRegTypeRegMap.vhd:25: use work.PkgNiSim.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_nidmaip.1.1.0d14\CommonFiles\Source\DMAC\PkgNiDmaRegMap.vhd:26: use work.PkgNiSim.all;

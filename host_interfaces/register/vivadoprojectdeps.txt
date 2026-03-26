@@ -1,2 +1,2 @@
-../../deps/flexrio-deps/encrypted/PkgNiUtilities.vhd
-../../deps/flexrio-deps/encrypted/PkgCommunicationInterface.vhd
+../../deps/flexrio-deps/encrypted/nicores_CommonCores.1.0.0a26/CommonFiles/Packages/PkgNiUtilities.vhd
+../../deps/flexrio-deps/encrypted/nicores_nidmaip.1.1.0d14/PCIe/CommonFiles/Source/PkgCommunicationInterface.vhd

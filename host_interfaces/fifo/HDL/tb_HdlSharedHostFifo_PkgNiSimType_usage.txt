@@ -1,0 +1,13 @@
+﻿=== tb_HdlSharedHostFifo HIERARCHY - PkgNiSimType usage ===
+
+Hierarchy files visited: 66
+PkgNiSimType hits: 6
+
+--- HITS ---
+
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSim.vhd:112: use work.PkgNiSimType.all;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:3: -- File: PkgNiSimType.vhd
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:42: package PkgNiSimType is
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:52: end package PkgNiSimType;
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:54: package body PkgNiSimType is
+C:\dev\github8\hdl-shared\deps\flexrio-deps\encrypted\nicores_CommonCores.1.0.0a26\CommonFiles\Packages\PkgNiSimType.vhd:74: end package body PkgNiSimType;

@@ -1,0 +1,11 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../../../../deps/flexrio-deps/encrypted/PkgNiUtilities.vhd" \
+"../../../../../../../deps/flexrio-deps/encrypted/PkgCommunicationInterface.vhd" \
+"../../../../../HDL/HdlSharedHostRegister.vhd" \
+"../../../../../HDL/HdlSharedCommonHostRegs.vhd" \
+"../../../../../HDL/HdlSharedHostRegisterArray.vhd" \
+"../../../../../HDL/tb_HdlSharedHostRegister.vhd" \
+
+# Do not sort compile order
+nosort
