@@ -14,18 +14,15 @@
 -- Purpose:
 --
 -- This file implements the input DMA FIFO that connects to the Chinch LvFpga
--- interface.  The module consists of an input FIFO, stream state management,
--- and some interconnect between them.
---
--- Enable chain logic has been removed; the signals formerly abstracted by
--- the enable chains (push/pop, reset, flush, stream state queries, and
--- state transition requests) are now exposed directly on the entity ports.
+-- interface.  The module simply consists of an input FIFO, the LV FPGA
+-- enable chain component, and some interconnect between them.
 --
 -- Bogdan Popa - 09/09/2013
 -- Added support for the Handshaking interface.
 --
 -- Harmish - 08/04/2014 - Added support for Flush method.
--- * vFlush strobe drives the Flush logic in DmaPortInStrmFifo.
+-- * vFlushIn/Out/Clear signals acts as the input to ViClkFlushEnableChain
+--   and outputs the strobe(iFlush) for the Flush logic in DmaPortInStrmFifo.
 -- * New field "FlushRequest" is added to the bInputStreamInterfaceFromFifo record(PkgDmaPortDmaFifos.vhd)
 -------------------------------------------------------------------------------
 
@@ -68,6 +65,16 @@ entity HdlSharedInputFifoInterface is
       -- kNumOfSamplesPerWrite : This the number of samples that are written in the FIFO
       --                    at one time;
       kNumOfSamplesPerWrite    : positive := 1;
+
+      -- kScl            : This boolean controls whether or not the DMA channel
+      --                   is located in a single cycle loop.  This is used to
+      --                   control how the enable chain with the user VI
+      --                   operates.
+      kScl               : boolean  := false;
+
+      -- kCountScl       : This boolean controls whether or not the query FIFO
+      --                   count method is in a single cycle loop.
+      kCountScl          : boolean  := false;
 
       -- kSignExtend     : This boolean controls whether or not to sign extend
       --                   the data before it is sent to the host.  This is
@@ -130,19 +137,39 @@ entity HdlSharedInputFifoInterface is
       -- vFull       : This indicates to the user VI when the FIFO is full.
       vFull          : out std_logic;
 
-      -- Write control (directly exposed, enable chain removed)
-      vPushPop           : in  boolean;
-      vDisable           : in  boolean;
-      vResetForFifo      : in  boolean;
-      bResetForFifo      : in  boolean;
-      bResetDone         : in  boolean;
+      -- vTimeout    : This is the number of ViClk cycles to wait to push data
+      --               into the FIFO in the case that the FIFO is full.
+      --               If the timeout is reached before there is space available
+      --               in the FIFO, the user VI receives the EnableOut signal,
+      --               but the data has not been pushed.
+      vTimeout       : in  std_logic_vector(31 downto 0);
 
-      -- Flush strobe
-      vFlush             : in  boolean;
+      -- vEnableIn   : This is the signal from the user VI indicating that he wishes
+      --               to perform a push.
+      vEnableIn      : in  std_logic;
+
+      -- vEnableOut  : This is the signal to the user VI indicating that the push
+      --               has occurred or timeout has occurred.  This stays asserted
+      --               until the VI asserts EnableClear.
+      vEnableOut     : out std_logic;
+
+      -- vEnableClear : This is the signal from the user VI to clear the EnableOut signal
+      --                and indicate that EnableIn should be re-processed.
+      vEnableClear    : in  std_logic;
+	  
+	  -- Signals for Flush enable chain
+	  vFlushEnableIn    : in std_logic;                  
+      vFlushEnableOut   : out std_logic;                  
+      vFlushEnableClear : in std_logic;     
 
       -- vCtCount     : The current FIFO empty count in the ViClk domain.
       vCtCount        : out unsigned(31 downto 0);
 
+      -- Enable chain for the empty count.
+      vCtEnableIn            : in  std_logic;
+      vCtEnableOut           : out std_logic;
+      vCtEnableOutClear      : in  std_logic;
+      
       -- Handshaking signals
       vInputValid            : in  std_logic;
       vReadyForInput         : out std_logic;
@@ -156,22 +183,38 @@ entity HdlSharedInputFifoInterface is
       --              stream state info is synchronous to.
       DefaultClk : in std_logic;
 
-      -- Stream state in the VI clock domain.
+      -- The enable chain for the stream state in the VI clock domain.
+      vStreamStateEnableIn : in std_logic;
+      vStreamStateEnableOut : out std_logic;
+      vStreamStateEnableClear : in std_logic;
       vStreamStateOut : out StreamStateValue_t;
 
-      -- Stream state in the default clock domain.
+      -- The enable chain for the stream state in the default clock domain.
+      dStreamStateEnableIn : in std_logic;
+      dStreamStateEnableOut : out std_logic;
+      dStreamStateEnableClear : in std_logic;
       dStreamStateOut : out StreamStateValue_t;
 
-      -- The current value of the stream state.
+      -- The current value of the stream state used by the get stream state resholder
+      -- if it is in a SCTL in the DefaultClk domain.
       dCurrentStreamState : out StreamStateValue_t;
 
-      -- State transition request signals (directly exposed, enable chains removed)
-      bStartStreamRequest           : in  boolean;
-      bStopStreamRequestFromDiagram : in  boolean;
-      dStopRequestStrobe            : in  boolean;
-      bStopStreamWithFlushRequest   : in  boolean;
-      bFlushTimeoutRequest          : in  boolean;
-      dStopWithFlushRequestStrobe   : in  boolean
+      -- The enable chain for the start request.
+      dStartRequestEnableIn : in std_logic;
+      dStartRequestEnableOut : out std_logic;
+      dStartRequestEnableClear : in std_logic;
+
+      -- The enable chain for the stop request.
+      dStopRequestEnableIn : in std_logic;
+      dStopRequestEnableOut : out std_logic;
+      dStopRequestEnableClear : in std_logic;
+
+      -- The enable chain for the stop with flush request.
+      dStopWithFlushRequestEnableIn : in std_logic;
+      dStopWithFlushRequestEnableOut : out std_logic;
+      dStopWithFlushRequestEnableClear : in std_logic;
+      dStopWithFlushRequestTimeout : in signed(31 downto 0);
+      dStopWithFlushRequestTimedOut : out std_logic
 
     );
 end HdlSharedInputFifoInterface;
@@ -191,6 +234,8 @@ architecture structure of HdlSharedInputFifoInterface is
   -- This is the width of the data written in the FIFO on the VI side;
   constant kWrPortWidth : integer := kSampleSize*kNumOfSamplesPerWrite;
 
+  constant kDataZero : std_logic_vector(kWrPortWidth-1 downto 0) := (others=>'0');
+
   -- The count width, which is the address width with the sample size taken into account.
   constant kFifoCountWidth : integer := FifoCountWidth(SampleSize => kSampleSize,
                                                        AddressWidth => kAddressWidth);
@@ -202,6 +247,7 @@ architecture structure of HdlSharedInputFifoInterface is
   signal bStreamState : StreamStateValue_t;
   signal vFifoOverflow : std_logic;
   signal vFifoOverflowFlag : std_logic;
+  signal bStartStreamRequest : boolean;
   signal bStateInDefaultClkDomain : StreamStateValue_t;
   signal vWritesDisabled, vWritesDisabledForController : boolean;
   signal bWritesDisabled : boolean;
@@ -215,15 +261,29 @@ architecture structure of HdlSharedInputFifoInterface is
   signal bDmaReset: boolean;
   signal bFifoDataOut: NiDmaData_t;
   signal bFifoOverflow: boolean;
+  signal bFlushTimeoutRequest: boolean;
   signal bNumReadSamples: unsigned(kFifoCountWidth-1 downto 0);
   signal bOverflowStopRequest: boolean;
+  signal bResetDone: boolean;
+  signal bResetForFifo: boolean;
   signal bRsrvReadSpaces: boolean;
+  signal bStopStreamRequestFromDiagram: boolean;
+  signal bStopStreamWithFlushRequest: boolean;
   signal bWriteDetected: boolean;
   signal dPushStateToBusClkDomain: boolean;
   signal dStopRequest: boolean;
+  signal dStopRequestStrobe: boolean;
+  signal dStopWithFlushRequestStrobe: boolean;
+  signal vCtCountLoc: unsigned(vEmptyCount'length-1 downto 0);
+  signal vCtEnableOutBool: boolean;
+  signal vDisable: boolean;
+  signal vEnableOutLoc: boolean;
   signal vFifoDataIn: std_logic_vector(kWrPortWidth-1 downto 0);
+  signal vFlush: boolean;
   signal vOverflowStopRequest: boolean;
   signal vPush: boolean;
+  signal vPushPop: boolean;
+  signal vResetForFifo: boolean;
   signal vStateDisable: boolean;
   signal vStreamState: StreamState_t;
   signal vStreamStateFromController: StreamState_t;
@@ -241,6 +301,7 @@ architecture structure of HdlSharedInputFifoInterface is
   
   
   signal bFlushReqFifo : std_logic;
+  signal vFlushEnableInDelay : std_logic;
 
 
 begin
@@ -273,8 +334,59 @@ begin
   
   bPopFifo <= bPop and ((not bTransferEnd) or bByteEnableDirect(bByteEnableDirect'left));
 
-  -- Drive overflow flag directly from FIFO full status (enable chain removed)
-  vFifoOverflowFlag <= to_StdLogic(vFullFromFifo);
+  --vhook_e DmaPortCommIfcComponentEnableChain
+  --vhook_a kInput true
+  --vhook_a kDataWidth kWrPortWidth
+  --vhook_a kHandshaking kWriteUsingHandshaking
+  --vhook_a aReset aDiagramReset
+  --vhook_a PClk ViClk
+  --vhook_a BusClk BusClk
+  --vhook_a pEnableIn to_boolean(vEnableIn)
+  --vhook_a pEnableOut vEnableOutLoc
+  --vhook_a pEnableClear to_Boolean(vEnableClear)
+  --vhook_a pHandshakingPushPopRequest vInputValidQual
+  --vhook_a pPushPop vPushPop
+  --vhook_a pDisable vDisable
+  --vhook_a pResetForFifo vResetForFifo
+  --vhook_a bResetForFifo bResetForFifo
+  --vhook_a bResetBitFromRegister bDmaReset
+  --vhook_a bResetDone bResetDone
+  --vhook_a pStateDisable vStateDisable
+  --vhook_a pTimeout vTimeout
+  --vhook_a pDataOut open
+  --vhook_a pFlag vFifoOverflowFlag
+  --vhook_a pDataOutFromFifo kDataZero
+  --vhook_a pFlagFromFifo to_StdLogic(vFullFromFifo)
+  DmaPortCommIfcComponentEnableChainx: entity work.DmaPortCommIfcComponentEnableChain (rtl)
+    generic map (
+      kInput       => true,                    -- in  boolean := true
+      kSCL         => kSCL,                    -- in  boolean := false
+      kDataWidth   => kWrPortWidth,            -- in  natural := 32
+      kHandshaking => kWriteUsingHandshaking)  -- in  boolean := false
+    port map (
+      aReset                     => aDiagramReset,               -- in  boolean
+      PClk                       => ViClk,                       -- in  std_logic
+      BusClk                     => BusClk,                      -- in  std_logic
+      pEnableIn                  => to_boolean(vEnableIn),       -- in  boolean
+      pEnableOut                 => vEnableOutLoc,               -- out boolean
+      pEnableClear               => to_Boolean(vEnableClear),    -- in  boolean
+      pHandshakingPushPopRequest => vInputValidQual,             -- in  boolean
+      pPushPop                   => vPushPop,                    -- out boolean
+      pDisable                   => vDisable,                    -- out boolean
+      pResetForFifo              => vResetForFifo,               -- out boolean
+      bResetForFifo              => bResetForFifo,               -- out boolean
+      bResetBitFromRegister      => bDmaReset,                   -- in  boolean
+      bResetDone                 => bResetDone,                  -- out boolean
+      pStateDisable              => vStateDisable,               -- in  boolean
+      pTimeout                   => vTimeout,                    -- in  std_logic_vector(
+      pDataOut                   => open,                        -- out std_logic_vector(
+      pFlag                      => vFifoOverflowFlag,           -- out std_logic
+      pDataOutFromFifo           => kDataZero,                   -- in  std_logic_vector(
+      pFlagFromFifo              => to_StdLogic(vFullFromFifo)); -- in  std_logic
+
+
+
+  vEnableOut <= to_StdLogic(vEnableOutLoc);
 
   -- Each sample in the vDataIn needs to be resized to actual sample size.
   -- Swap the samples order in a write data port for the multi element write case.
@@ -292,6 +404,43 @@ begin
       end if;
     end loop;
   end process;
+  
+    --vhook_e DmaPortCommIfcComponentStreamStateEnableChain ViClkFlushEnableChain
+    --vhook_a kSCL kScl
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk ViClk
+    --vhook_c vStreamState to_StreamStateValue(Unlinked)
+    --vhook_a vEnableIn vFlushEnableIn
+    --vhook_a vEnableOut vFlushEnableOut
+    --vhook_a vEnableClear vFlushEnableClear
+    --vhook_a vStreamStateOut open
+    ViClkFlushEnableChain: entity work.DmaPortCommIfcComponentStreamStateEnableChain (rtl)
+      generic map (
+        kSCL => kScl)  -- in  boolean := false
+      port map (
+        aReset          => aDiagramReset,                  -- in  boolean
+        ViClk           => ViClk,                          -- in  std_logic
+        vStreamState    => to_StreamStateValue(Unlinked),  -- in  StreamStateValue_t
+        vEnableIn       => vFlushEnableIn,                 -- in  std_logic
+        vEnableOut      => vFlushEnableOut,                -- out std_logic
+        vEnableClear    => vFlushEnableClear,              -- in  std_logic
+        vStreamStateOut => open);                          -- out StreamStateValue_t
+
+   
+	process (aDiagramReset, ViClk)
+    begin
+      if aDiagramReset then
+        vFlushEnableInDelay <= '0';
+      elsif rising_edge(ViClk) then
+        vFlushEnableInDelay <= vFlushEnableIn;
+      end if;
+    end process;
+	SCL : if kSCL generate
+		vFlush <= to_boolean(vFlushEnableIn);
+	end generate SCL;
+	NOSCL : if not kSCL generate
+		vFlush <= to_boolean(vFlushEnableIn and not vFlushEnableInDelay);
+	end generate NOSCL;
   
   --vhook_e DmaPortInStrmFifo
   --vhook_a kDataTypeIsSigned kSignExtend
@@ -370,12 +519,39 @@ begin
                                     vStreamStateValueFromControllerEarly;
       
 
+  --vhook_e NiFpgaFifoCountControl
+  --vhook_a kWidth vEmptyCount'length
+  --vhook_a kInSCL kCountScl
+  --vhook_a aReset aDiagramReset
+  --vhook_a Clk ViClk
+  --vhook_a cReset vResetForFifo
+  --vhook_a cEnableIn to_boolean(vCtEnableIn)
+  --vhook_a cEnableOutClear to_boolean(vCtEnableOutClear)
+  --vhook_a cEnableOut vCtEnableOutBool
+  --vhook_a cCountIn vEmptyCount
+  --vhook_a cCountOut vCtCountLoc
+  NiFpgaFifoCountControlx: entity work.NiFpgaFifoCountControl (rtl)
+    generic map (
+      kWidth => vEmptyCount'length,  -- in  positive
+      kInSCL => kCountScl)           -- in  boolean
+    port map (
+      aReset          => aDiagramReset,                  -- in  boolean
+      Clk             => ViClk,                          -- in  std_logic
+      cReset          => vResetForFifo,                  -- in  boolean
+      cEnableIn       => to_boolean(vCtEnableIn),        -- in  boolean
+      cEnableOutClear => to_boolean(vCtEnableOutClear),  -- in  boolean
+      cEnableOut      => vCtEnableOutBool,               -- out boolean
+      cCountIn        => vEmptyCount,                    -- in  unsigned(kWidth-1 downto 
+      cCountOut       => vCtCountLoc);                   -- out unsigned(kWidth-1 downto 
+
+  vCtEnableOut <= to_StdLogic(vCtEnableOutBool);
+
   -- Report the number of elements available for writing as zero if it is a peer-to-peer
   -- stream and the stream is not enabled.
   vEmptyCount <= vEmptyCountLoc when not vStateDisable else
                  (others=>'0');
 
-  vCtCount <= resize(vEmptyCount, vCtCount'length);
+  vCtCount <= resize(vCtCountLoc, vCtCount'length);
 
   -- Do not allow a push to occur when the FIFO is full.  This will prevent
   -- any overflows from occuring.
@@ -385,10 +561,10 @@ begin
   vFullFromFifo <= vEmptyCount < kNumOfSamplesPerWrite;
   vFull <= vFifoOverflowFlag;
 
-  -- In case of Handshaking report the overflow condition only when the vInputValid is asserted
-  -- while the FIFO is full.
-  -- In case of timeout mechanism the overflow condition occurs
-  -- when the FIFO is full.
+  -- In case of Handshaking report the overflow condition only when the vInputValid is asserted 
+  -- together with pEnableIn while the FIFO is full.
+  -- In case of timeout mechanism the overflow condition occurs 
+  -- when pEnableIn is asserted while the FIFO is full.  
   vFifoOverflow <= to_stdlogic(to_boolean(vFifoOverflowFlag) and to_boolean(vInputValid)) 
               when kWriteUsingHandshaking else vFifoOverflowFlag;
   
@@ -432,12 +608,14 @@ begin
   end generate GenWriteHS;
 
   ---------------------------------------------------------------------------------------
-  -- Stream State Components
+  -- Stream State Enable Chain Components
   ---------------------------------------------------------------------------------------
   StreamStateBlock: block
 
     signal vStreamStateValue : StreamStateValue_t;
     signal dStreamStateValue, dStreamStateValueFromController : StreamStateValue_t;
+    signal dStartTransitionComplete, dStopTransitionComplete,
+      dStopWithFlushTransitionComplete : boolean;
     signal dStreamState, dStreamStateFromController : StreamState_t;
     signal bPushStateToDefaultClkDomain : boolean;
 
@@ -462,12 +640,159 @@ begin
 
 
     -------------------------------------------------------------------------------------
-    -- Stream State Outputs (enable chains removed, directly driven)
+    -- Enable Chain Components for Querying Stream State
     -------------------------------------------------------------------------------------
 
-    vStreamStateOut <= vStreamStateValue;
-    dStreamStateOut <= dStreamStateValue;
+
+    --vhook_e DmaPortCommIfcComponentStreamStateEnableChain ViClkStreamStateEnableChain
+    --vhook_a kSCL kScl
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk ViClk
+    --vhook_a vStreamState vStreamStateValue
+    --vhook_a vEnableIn vStreamStateEnableIn
+    --vhook_a vEnableOut vStreamStateEnableOut
+    --vhook_a vEnableClear vStreamStateEnableClear
+    --vhook_a vStreamStateOut vStreamStateOut
+    ViClkStreamStateEnableChain: entity work.DmaPortCommIfcComponentStreamStateEnableChain (rtl)
+      generic map (
+        kSCL => kScl)  -- in  boolean := false
+      port map (
+        aReset          => aDiagramReset,            -- in  boolean
+        ViClk           => ViClk,                    -- in  std_logic
+        vStreamState    => vStreamStateValue,        -- in  StreamStateValue_t
+        vEnableIn       => vStreamStateEnableIn,     -- in  std_logic
+        vEnableOut      => vStreamStateEnableOut,    -- out std_logic
+        vEnableClear    => vStreamStateEnableClear,  -- in  std_logic
+        vStreamStateOut => vStreamStateOut);         -- out StreamStateValue_t
+		
+	
+
+
+    --vhook_e DmaPortCommIfcComponentStreamStateEnableChain DefaultClkStreamStateEnableChain
+    --vhook_a kSCL false
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk DefaultClk
+    --vhook_a vStreamState dStreamStateValue
+    --vhook_a vEnableIn dStreamStateEnableIn
+    --vhook_a vEnableOut dStreamStateEnableOut
+    --vhook_a vEnableClear dStreamStateEnableClear
+    --vhook_a vStreamStateOut dStreamStateOut
+    DefaultClkStreamStateEnableChain: entity work.DmaPortCommIfcComponentStreamStateEnableChain (rtl)
+      generic map (
+        kSCL => false)  -- in  boolean := false
+      port map (
+        aReset          => aDiagramReset,            -- in  boolean
+        ViClk           => DefaultClk,               -- in  std_logic
+        vStreamState    => dStreamStateValue,        -- in  StreamStateValue_t
+        vEnableIn       => dStreamStateEnableIn,     -- in  std_logic
+        vEnableOut      => dStreamStateEnableOut,    -- out std_logic
+        vEnableClear    => dStreamStateEnableClear,  -- in  std_logic
+        vStreamStateOut => dStreamStateOut);         -- out StreamStateValue_t
+
+
     dCurrentStreamState <= dStreamStateValue;
+
+
+    -------------------------------------------------------------------------------------
+    -- Enable Chain Components for State Transitioning
+    -------------------------------------------------------------------------------------
+
+    dStartTransitionComplete <= dStreamState = Enabled or dStreamState = Flushing;
+    dStopTransitionComplete <= dStreamState = Unlinked or dStreamState = Disabled;
+    dStopWithFlushTransitionComplete <= dStreamState = Unlinked or
+      dStreamState = Disabled;
+
+    --vhook_e DmaPortCommIfcComponentStateTransitionEnableChain StartEnableChain
+    --vhook_a ViClk DefaultClk
+    --vhook_a aReset aDiagramReset
+    --vhook_a bTransitionRequestStrobe bStartStreamRequest
+    --vhook_a bTransitionTimeoutRequestStrobe open
+    --vhook_a vTransitionRequestStrobe open
+    --vhook_a vTransitionTimeoutRequestStrobe open
+    --vhook_a vTransitionComplete dStartTransitionComplete
+    --vhook_a vEnableIn dStartRequestEnableIn
+    --vhook_a vEnableOut dStartRequestEnableOut
+    --vhook_a vEnableClear dStartRequestEnableClear
+    --vhook_a vTimedOut open
+    --vhook_a vTimeout (others=>'0')
+    StartEnableChain: entity work.DmaPortCommIfcComponentStateTransitionEnableChain (rtl)
+      port map (
+        aReset                          => aDiagramReset,             -- in  boolean
+        ViClk                           => DefaultClk,                -- in  std_logic
+        BusClk                          => BusClk,                    -- in  std_logic
+        bTransitionRequestStrobe        => bStartStreamRequest,       -- out boolean
+        bTransitionTimeoutRequestStrobe => open,                      -- out boolean
+        vTransitionRequestStrobe        => open,                      -- out boolean
+        vTransitionTimeoutRequestStrobe => open,                      -- out boolean
+        vTransitionComplete             => dStartTransitionComplete,  -- in  boolean
+        vEnableIn                       => dStartRequestEnableIn,     -- in  std_logic
+        vEnableOut                      => dStartRequestEnableOut,    -- out std_logic
+        vEnableClear                    => dStartRequestEnableClear,  -- in  std_logic
+        vTimedOut                       => open,                      -- out std_logic
+        vTimeout                        => (others=>'0'));            -- in  signed(31 do
+
+
+
+    --vhook_e DmaPortCommIfcComponentStateTransitionEnableChain StopEnableChain
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk DefaultClk
+    --vhook_a bTransitionRequestStrobe bStopStreamRequestFromDiagram
+    --vhook_a vTransitionRequestStrobe dStopRequestStrobe
+    --vhook_a vTransitionComplete dStopTransitionComplete
+    --vhook_a vEnableIn dStopRequestEnableIn
+    --vhook_a vEnableOut dStopRequestEnableOut
+    --vhook_a vEnableClear dStopRequestEnableClear
+    --vhook_a bTransitionTimeoutRequestStrobe open
+    --vhook_a vTransitionTimeoutRequestStrobe open
+    --vhook_a vTimedOut open
+    --vhook_a vTimeout (others=>'0')
+    StopEnableChain: entity work.DmaPortCommIfcComponentStateTransitionEnableChain (rtl)
+      port map (
+        aReset                          => aDiagramReset,                  -- in  boolean
+        ViClk                           => DefaultClk,                     -- in  std_log
+        BusClk                          => BusClk,                         -- in  std_log
+        bTransitionRequestStrobe        => bStopStreamRequestFromDiagram,  -- out boolean
+        bTransitionTimeoutRequestStrobe => open,                           -- out boolean
+        vTransitionRequestStrobe        => dStopRequestStrobe,             -- out boolean
+        vTransitionTimeoutRequestStrobe => open,                           -- out boolean
+        vTransitionComplete             => dStopTransitionComplete,        -- in  boolean
+        vEnableIn                       => dStopRequestEnableIn,           -- in  std_log
+        vEnableOut                      => dStopRequestEnableOut,          -- out std_log
+        vEnableClear                    => dStopRequestEnableClear,        -- in  std_log
+        vTimedOut                       => open,                           -- out std_log
+        vTimeout                        => (others=>'0'));                 -- in  signed(
+
+
+
+    --vhook_e DmaPortCommIfcComponentStateTransitionEnableChain StopWithFlushEnableChain
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk DefaultClk
+    --vhook_a bTransitionRequestStrobe bStopStreamWithFlushRequest
+    --vhook_a vTransitionRequestStrobe dStopWithFlushRequestStrobe
+    --vhook_a vTransitionComplete dStopWithFlushTransitionComplete
+    --vhook_a vEnableIn dStopWithFlushRequestEnableIn
+    --vhook_a vEnableOut dStopWithFlushRequestEnableOut
+    --vhook_a vEnableClear dStopWithFlushRequestEnableClear
+    --vhook_a bTransitionTimeoutRequestStrobe bFlushTimeoutRequest
+    --vhook_a vTransitionTimeoutRequestStrobe open
+    --vhook_a vTimedOut dStopWithFlushRequestTimedOut
+    --vhook_a vTimeout dStopWithFlushRequestTimeout
+    StopWithFlushEnableChain: entity work.DmaPortCommIfcComponentStateTransitionEnableChain (rtl)
+      port map (
+        aReset                          => aDiagramReset,                     -- in  bool
+        ViClk                           => DefaultClk,                        -- in  std_
+        BusClk                          => BusClk,                            -- in  std_
+        bTransitionRequestStrobe        => bStopStreamWithFlushRequest,       -- out bool
+        bTransitionTimeoutRequestStrobe => bFlushTimeoutRequest,              -- out bool
+        vTransitionRequestStrobe        => dStopWithFlushRequestStrobe,       -- out bool
+        vTransitionTimeoutRequestStrobe => open,                              -- out bool
+        vTransitionComplete             => dStopWithFlushTransitionComplete,  -- in  bool
+        vEnableIn                       => dStopWithFlushRequestEnableIn,     -- in  std_
+        vEnableOut                      => dStopWithFlushRequestEnableOut,    -- out std_
+        vEnableClear                    => dStopWithFlushRequestEnableClear,  -- in  std_
+        vTimedOut                       => dStopWithFlushRequestTimedOut,     -- out std_
+        vTimeout                        => dStopWithFlushRequestTimeout);     -- in  sign
+
 
 
     -------------------------------------------------------------------------------------
@@ -687,8 +1012,8 @@ begin
     signal vFifoOverflowStrobe, vHsModuleReady : boolean;
   begin
 
-    -- Create the FIFO overflow strobe based on the overflow signal.
-    -- Qualify this with the HS ready signal so that a push is not
+    -- Create the FIFO overflow strobe based on the overflow signal from
+    -- the enable chain.  Qualify this with the HS ready signal so that a push is not
     -- sent while the HS module is in the middle of a previous HS.  This means that an
     -- overflow could be missed by the module, but this will only happen if the HS were
     -- already in the process of handshaking a previous overflow.  Since the overflow is
@@ -696,7 +1021,7 @@ begin
     -- between handshakes is less than the time for the host to receive and handle the
     -- interrupt.
 
-    vFifoOverflowStrobe <= to_Boolean(vFifoOverflow) and vPushPop and
+    vFifoOverflowStrobe <= to_Boolean(vFifoOverflow) and vEnableOutLoc and
       vHsModuleReady;
 
 

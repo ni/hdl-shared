@@ -1,1 +1,0 @@
--wto "7fc312eb3de44a2ba091d6a77bb172f0" --incr --debug "typical" --relax --mt "2" -L "xil_defaultlib" -L "secureip" --snapshot "tb_HdlSharedHostFifo_behav" "xil_defaultlib.tb_HdlSharedHostFifo" -log "elaborate.log" 

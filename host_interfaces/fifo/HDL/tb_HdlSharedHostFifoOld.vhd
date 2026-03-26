@@ -30,19 +30,25 @@ architecture sim of tb_HdlSharedHostFifo is
   signal bOutputStreamInterfaceFromFifo : OutputStreamInterfaceFromFifo_t;
 
   signal vDataIn : std_logic_vector(cSampleWidth*cNumSamplesPerWrite-1 downto 0) := (others => '0');
-  signal vPushPopIn : boolean := false;
-  signal vDisableIn : boolean := false;
-  signal vResetForFifoIn : boolean := false;
-  signal bResetForFifoIn : boolean := false;
-  signal bResetDoneIn : boolean := false;
-  signal vFlushIn : boolean := false;
+  signal vTimeoutIn : std_logic_vector(31 downto 0) := (others => '0');
+  signal vEnableInIn : std_logic := '0';
+  signal vEnableClearIn : std_logic := '0';
+  signal vFlushEnableIn : std_logic := '0';
+  signal vFlushEnableClear : std_logic := '0';
+  signal vCtEnableInIn : std_logic := '0';
+  signal vCtEnableOutClearIn : std_logic := '0';
   signal vInputValid : std_logic := '0';
-  signal bStartStreamRequestIn : boolean := false;
-  signal bStopStreamRequestFromDiagramIn : boolean := false;
-  signal dStopRequestStrobeIn : boolean := false;
-  signal bStopStreamWithFlushRequestIn : boolean := false;
-  signal bFlushTimeoutRequestIn : boolean := false;
-  signal dStopWithFlushRequestStrobeIn : boolean := false;
+  signal vStreamStateEnableInIn : std_logic := '0';
+  signal vStreamStateEnableClearIn : std_logic := '0';
+  signal dStreamStateEnableInIn : std_logic := '0';
+  signal dStreamStateEnableClearIn : std_logic := '0';
+  signal dStartRequestEnableInIn : std_logic := '0';
+  signal dStartRequestEnableClearIn : std_logic := '0';
+  signal dStopRequestEnableInIn : std_logic := '0';
+  signal dStopRequestEnableClearIn : std_logic := '0';
+  signal dStopWithFlushRequestEnableIn : std_logic := '0';
+  signal dStopWithFlushRequestEnableClear : std_logic := '0';
+  signal dStopWithFlushRequestTimeout : signed(31 downto 0) := (others => '0');
 
   signal vTimeoutOut : std_logic_vector(31 downto 0) := (others => '0');
   signal vEnableInOut : std_logic := '0';
@@ -61,11 +67,13 @@ architecture sim of tb_HdlSharedHostFifo is
 
 begin
 
-  u_input_fifo_ifc: entity work.HdlSharedInputFifoInterface
+  u_input_fifo_ifc: entity work.HdlSharedInputFifoInterfaceOld
     generic map (
       kFifoDepth => cFifoDepth,
       kSampleWidth => cSampleWidth,
       kNumOfSamplesPerWrite => cNumSamplesPerWrite,
+      kScl => false,
+      kCountScl => false,
       kSignExtend => false,
       kFxpType => false,
       kPeerToPeer => false,
@@ -81,27 +89,42 @@ begin
       ViClk => ViClk,
       vDataIn => vDataIn,
       vFull => open,
-      vPushPop => vPushPopIn,
-      vDisable => vDisableIn,
-      vResetForFifo => vResetForFifoIn,
-      bResetForFifo => bResetForFifoIn,
-      bResetDone => bResetDoneIn,
-      vFlush => vFlushIn,
+      vTimeout => vTimeoutIn,
+      vEnableIn => vEnableInIn,
+      vEnableOut => open,
+      vEnableClear => vEnableClearIn,
+      vFlushEnableIn => vFlushEnableIn,
+      vFlushEnableOut => open,
+      vFlushEnableClear => vFlushEnableClear,
       vCtCount => open,
+      vCtEnableIn => vCtEnableInIn,
+      vCtEnableOut => open,
+      vCtEnableOutClear => vCtEnableOutClearIn,
       vInputValid => vInputValid,
       vReadyForInput => open,
       DefaultClk => DefaultClk,
+      vStreamStateEnableIn => vStreamStateEnableInIn,
+      vStreamStateEnableOut => open,
+      vStreamStateEnableClear => vStreamStateEnableClearIn,
       vStreamStateOut => open,
+      dStreamStateEnableIn => dStreamStateEnableInIn,
+      dStreamStateEnableOut => open,
+      dStreamStateEnableClear => dStreamStateEnableClearIn,
       dStreamStateOut => open,
       dCurrentStreamState => open,
-      bStartStreamRequest => bStartStreamRequestIn,
-      bStopStreamRequestFromDiagram => bStopStreamRequestFromDiagramIn,
-      dStopRequestStrobe => dStopRequestStrobeIn,
-      bStopStreamWithFlushRequest => bStopStreamWithFlushRequestIn,
-      bFlushTimeoutRequest => bFlushTimeoutRequestIn,
-      dStopWithFlushRequestStrobe => dStopWithFlushRequestStrobeIn);
+      dStartRequestEnableIn => dStartRequestEnableInIn,
+      dStartRequestEnableOut => open,
+      dStartRequestEnableClear => dStartRequestEnableClearIn,
+      dStopRequestEnableIn => dStopRequestEnableInIn,
+      dStopRequestEnableOut => open,
+      dStopRequestEnableClear => dStopRequestEnableClearIn,
+      dStopWithFlushRequestEnableIn => dStopWithFlushRequestEnableIn,
+      dStopWithFlushRequestEnableOut => open,
+      dStopWithFlushRequestEnableClear => dStopWithFlushRequestEnableClear,
+      dStopWithFlushRequestTimeout => dStopWithFlushRequestTimeout,
+      dStopWithFlushRequestTimedOut => open);
 
-  u_output_fifo_ifc: entity work.HdlSharedOutputFifoInterface
+  u_output_fifo_ifc: entity work.HdlSharedOutputFifoInterfaceOld
     generic map (
       kFifoDepth => cFifoDepth,
       kSampleWidth => cSampleWidth,
