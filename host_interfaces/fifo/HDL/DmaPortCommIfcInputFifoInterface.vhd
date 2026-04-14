@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: HdlSharedInputFifoInterface.vhd
+-- File: DmaPortCommIfcInputFifoInterface.vhd
 -- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
 -- Date: 11 June 2008
@@ -52,7 +52,7 @@ library work;
   use work.PkgNiDma.all;
 
 
-entity HdlSharedInputFifoInterfaceOld is
+entity DmaPortCommIfcInputFifoInterface is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus data width
@@ -217,10 +217,10 @@ entity HdlSharedInputFifoInterfaceOld is
       dStopWithFlushRequestTimedOut : out std_logic
 
     );
-end HdlSharedInputFifoInterfaceOld;
+end DmaPortCommIfcInputFifoInterface;
 
 
-architecture structure of HdlSharedInputFifoInterfaceOld is
+architecture structure of DmaPortCommIfcInputFifoInterface is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,

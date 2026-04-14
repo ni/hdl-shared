@@ -46,7 +46,7 @@ library work;
   use work.PkgNiDma.all;
   use work.PkgNiDmaConfig.all;
 
-entity HdlSharedOutputFifoInterface is
+entity HdlSharedOutputFifoInterfaceOld is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in bus data width words.
@@ -200,10 +200,10 @@ entity HdlSharedOutputFifoInterface is
       dStopRequestEnableClear : in std_logic
 
     );
-end HdlSharedOutputFifoInterface;
+end HdlSharedOutputFifoInterfaceOld;
 
 
-architecture structure of HdlSharedOutputFifoInterface is
+architecture structure of HdlSharedOutputFifoInterfaceOld is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,
