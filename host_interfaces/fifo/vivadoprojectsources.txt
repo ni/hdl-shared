@@ -1,1 +1,5 @@
-HDL/tb_DmaPortCommIfcInputStream.vhd
+HDL/PkgCommIntConfiguration.vhd
+HDL/HdlSharedInputFifoInterface.vhd
+HDL/HdlSharedInputWrapper.vhd
+HDL/HdlSharedOutputFifoInterface.vhd
+HDL/HdlSharedOutputWrapper.vhd
