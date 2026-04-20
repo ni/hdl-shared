@@ -5,19 +5,19 @@ This project contains shared code for HDL-to-Host registers.  The HDL examples c
 
 ### FPGA HDL Code
 
-- `HDL/HdlSharedHostRegister.vhd`
+- `HDL/NiHostRegister.vhd`
 	- Core single-register building block.
 	- Implements one 32-bit host-visible register with optional host read-only behavior and optional FPGA acknowledgment/ready gating.
 
-- `HDL/HdlSharedHostRegisterArray.vhd`
-	- Multi-register wrapper around `HdlSharedHostRegister`.
+- `HDL/NiHostRegisterArray.vhd`
+	- Multi-register wrapper around `NiHostRegister`.
 	- Creates a register bank with configurable defaults and per-register behavior (`kReadOnly`, `kUseFpgaAck`).
 
-- `HDL/HdlSharedCommonHostRegs.vhd`
+- `HDL/NiCommonHostRegs.vhd`
 	- Standard common register block intended for most designs.
 	- Exposes fixed offsets for signature, version, oldest compatible version, and scratch.
 
-- `HDL/tb_HdlSharedHostRegister.vhd`
+- `HDL/tb_NiHostRegister.vhd`
 	- Behavioral testbench covering single-register behavior, array behavior, and common-register behavior.
 
 ### Documentation

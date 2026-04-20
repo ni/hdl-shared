@@ -24,8 +24,8 @@ end tb_all;
 architecture test of tb_all is
 begin
 
-  InputFifoTb : entity work.tb_HdlSharedInputFifo(test);
+  InputFifoTb : entity work.tb_FifoWriter(test);
 
-  OutputFifoTb : entity work.tb_HdlSharedOutputFifo(test);
+  OutputFifoTb : entity work.tb_FifoReader(test);
 
 end test;

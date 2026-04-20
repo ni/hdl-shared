@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: tb_HdlSharedOutputFifo.vhd
+-- File: tb_FifoReader.vhd
 -- Original Project: LabVIEW FPGA
 --
 -------------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
---   Comprehensive testbench for HdlSharedOutputWrapper.
+--   Comprehensive testbench for NiFifoReader.
 --   Tests DMA data transfer to VI FIFO, stream state transitions, reset,
 --   arbiter thresholds, SATCR management, and data integrity checking.
 --
@@ -34,10 +34,10 @@ library work;
   use work.PkgNiDmaConfig.all;
   use work.PkgCommIntConfiguration.all;
 
-entity tb_HdlSharedOutputFifo is
-end tb_HdlSharedOutputFifo;
+entity tb_FifoReader is
+end tb_FifoReader;
 
-architecture test of tb_HdlSharedOutputFifo is
+architecture test of tb_FifoReader is
 
   ---------------------------------------------------------------------------
   -- DUT Configuration
@@ -157,7 +157,7 @@ begin
   ---------------------------------------------------------------------------
   -- DUT instantiation
   ---------------------------------------------------------------------------
-  DUT: entity work.HdlSharedOutputWrapper (structure)
+  DUT: entity work.NiFifoReaderTbWrapper (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kDataWidth            => kDataWidth,

@@ -160,7 +160,7 @@ package PkgCommIntConfiguration is
      InterfaceIsHandshaking  => false);
 
   constant kDmaFifoConfArray : DmaChannelConfArray_t(0 to Larger(kNumberOfDmaChannels,16) - 1) :=
-(   (Mode => NiFpgaTargetToHost, --0  (matches tb_HdlSharedInputWrapper DUT)
+(   (Mode => NiFpgaTargetToHost, --0  (matches tb_FifoWriter DUT)
     FifoDepth => 1023,
 --    FifoWidth => 32,
     FifoWidth => 64,

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: HdlSharedOutputWrapper.vhd
+-- File: NiFifoReaderTbWrapper.vhd
 -- Original Project: LabVIEW FPGA
 --
 -------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Purpose:
 --
 --   This block wraps the DMA output stream controller (DmaPortCommIfcOutputStream)
---   together with the simplified FIFO interface (HdlSharedOutputFifoInterface).
+--   together with the simplified FIFO interface (NiFifoReaderCore).
 --   Enable chains have been removed; the user-facing signals (read, stream
 --   state queries, and state transition requests) are exposed directly.
 --
@@ -33,7 +33,7 @@ library work;
   use work.PkgDmaPortCommIfcStreamStates.all;
   use work.PkgNiDma.all;
 
-entity HdlSharedOutputWrapper is
+entity NiFifoReaderTbWrapper is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus
@@ -140,15 +140,15 @@ entity HdlSharedOutputWrapper is
       bIrq : out IrqStatusToInterface_t
 
     );
-end HdlSharedOutputWrapper;
+end NiFifoReaderTbWrapper;
 
 
-architecture structure of HdlSharedOutputWrapper is
+architecture structure of NiFifoReaderTbWrapper is
 
   signal bOutputStreamInterfaceFromFifo : OutputStreamInterfaceFromFifo_t;
   signal bOutputStreamInterfaceToFifo   : OutputStreamInterfaceToFifo_t;
 
-  -- The DmaPortCommIfcOutputStream and HdlSharedOutputFifoInterface both
+  -- The DmaPortCommIfcOutputStream and NiFifoReaderCore both
   -- express kFifoDepth in 64-bit bus-width words.  Convert from the
   -- user-visible sample depth to 64-bit-word depth for these components.
   constant kSampleSizeInt  : natural := ActualSampleSize(
@@ -187,7 +187,7 @@ begin
       bIrq                            => bIrq);
 
 
-  HdlSharedOutputFifoInterfacex: entity work.HdlSharedOutputFifoInterface (structure)
+  NiFifoReaderx: entity work.NiFifoReader (structure)
     generic map (
       kFifoDepth            => kFifoDepthIn64BitWords,
       kSampleWidth          => kDataWidth,

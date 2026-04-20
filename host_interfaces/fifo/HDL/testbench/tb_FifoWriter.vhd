@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: tb_HdlSharedInputFifo.vhd
+-- File: tb_FifoWriter.vhd
 -- Original Project: LabVIEW FPGA
 --
 -------------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
---   Comprehensive testbench for HdlSharedInputWrapper.
+--   Comprehensive testbench for NiFifoWriter.
 --   Tests FIFO push, DMA transfer, stream state transitions, reset,
 --   arbiter thresholds, flush operations, SATCR management, eviction
 --   timeout, and random stress testing.
@@ -35,10 +35,10 @@ library work;
   use work.PkgNiDmaConfig.all;
   use work.PkgCommIntConfiguration.all;
 
-entity tb_HdlSharedInputFifo is
-end tb_HdlSharedInputFifo;
+entity tb_FifoWriter is
+end tb_FifoWriter;
 
-architecture test of tb_HdlSharedInputFifo is
+architecture test of tb_FifoWriter is
 
   ---------------------------------------------------------------------------
   -- DUT Configuration
@@ -161,7 +161,7 @@ begin
   ---------------------------------------------------------------------------
   -- DUT instantiation
   ---------------------------------------------------------------------------
-  DUT: entity work.HdlSharedInputWrapper (structure)
+  DUT: entity work.NiFifoWriterTbWrapper (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kDataWidth            => kDataWidth,

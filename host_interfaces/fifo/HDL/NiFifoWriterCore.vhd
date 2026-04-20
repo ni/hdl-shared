@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: HdlSharedInputFifoInterface.vhd
+-- File: NiFifoWriterCore.vhd
 -- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
 -- Date: 11 June 2008
@@ -17,6 +17,16 @@
 -- interface.  The module consists of an input FIFO, stream state management,
 -- and some interconnect between them.
 --
+-- Enable chain logic has been removed; the signals formerly abstracted by
+-- the enable chains (push/pop, reset, flush, stream state queries, and
+-- state transition requests) are now exposed directly on the entity ports.
+--
+-- Bogdan Popa - 09/09/2013
+-- Added support for the Handshaking interface.
+--
+-- Harmish - 08/04/2014 - Added support for Flush method.
+-- * vFlush strobe drives the Flush logic in DmaPortInStrmFifo.
+-- * New field "FlushRequest" is added to the bInputStreamInterfaceFromFifo record(PkgDmaPortDmaFifos.vhd)
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -45,7 +55,7 @@ library work;
   use work.PkgNiDma.all;
 
 
-entity HdlSharedInputFifoInterface is
+entity NiFifoWriterCore is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus data width
@@ -103,46 +113,46 @@ entity HdlSharedInputFifoInterface is
       -- User VI interface for writing
       -------------------------------------------------------------------------
 
-      -- DefaultClk       : The user HDL clock for writing
-      DefaultClk          : in std_logic;
+      -- ViClk       : The user VI clock for writing
+      ViClk          : in std_logic;
 
-      -- dDataIn     : The data coming from the user VI to push into the FIFO.
-      dDataIn        : in std_logic_vector(kSampleWidth*kNumOfSamplesPerWrite-1 downto 0);
+      -- vDataIn     : The data coming from the user VI to push into the FIFO.
+      vDataIn        : in std_logic_vector(kSampleWidth*kNumOfSamplesPerWrite-1 downto 0);
 
-      -- dFull       : This indicates to the user VI when the FIFO is full.
-      dFull          : out boolean;
+      -- vFull       : This indicates to the user VI when the FIFO is full.
+      vFull          : out boolean;
 
-      -- Write strobe 
-      dWriteFifo     : in  boolean;
+      -- Write control 
+      vWriteFifo       : in  boolean;
 
       -- Flush strobe
-      dFlush         : in  boolean;
+      vFlush             : in  boolean;
 
-      -- dCtCount     : The current FIFO empty count in the DefaultClk domain.
-      dCtCount        : out unsigned(31 downto 0);
+      -- vCtCount     : The current FIFO empty count in the ViClk domain.
+      vCtCount        : out unsigned(31 downto 0);
 
       -- Handshaking signals
-      dInputValid            : in  boolean;
-      dReadyForInput         : out boolean;
+      vInputValid            : in  boolean;
+      vReadyForInput         : out boolean;
 
       -------------------------------------------------------------------------
       -- User VI interface for stream state info and transitioning
       -------------------------------------------------------------------------
 
       -- Stream state in the VI clock domain.
-      dStreamStateOut : out StreamStateValue_t;
+      vStreamStateOut : out StreamStateValue_t;
 
       -- State transition request signals 
-      dStartRequest                 : in  boolean;
-      dStopRequest                  : in  boolean;
-      dFlushTimeoutRequest          : in  boolean;
-      dStopWithFlushRequest         : in  boolean
+      vStartStreamRequest           : in  boolean;
+      vStopRequestStrobe            : in  boolean;
+      vFlushTimeoutRequest          : in  boolean;
+      vStopWithFlushRequestStrobe   : in  boolean
 
     );
-end HdlSharedInputFifoInterface;
+end NiFifoWriterCore;
 
 
-architecture structure of HdlSharedInputFifoInterface is
+architecture structure of NiFifoWriterCore is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,
@@ -163,53 +173,64 @@ architecture structure of HdlSharedInputFifoInterface is
                                                        AddressWidth => kAddressWidth);
 
 
-  signal dFullFromFifo: boolean;
-  signal dEmptyCount, dEmptyCountLoc: unsigned(kFifoCountWidth-1 downto 0);
+  signal vFullFromFifo: boolean;
+  signal vEmptyCount, vEmptyCountLoc: unsigned(kFifoCountWidth-1 downto 0);
   signal bFifoFullCount: unsigned(kFifoCountWidth-1 downto 0);
   signal bStreamState : StreamStateValue_t;
-  signal dFifoOverflow : std_logic;
-  signal dFifoOverflowFlag : std_logic;
-  signal bStateInDefaultClkDomain : StreamStateValue_t;
-  signal dWritesDisabled, dWritesDisabledForController : boolean;
+  signal vFifoOverflow : std_logic;
+  signal vFifoOverflowFlag : std_logic;
+  signal bStateInViClkDomain : StreamStateValue_t;
+  signal vWritesDisabled, vWritesDisabledForController : boolean;
   signal bWritesDisabled : boolean;
   signal bTransferEnd: boolean;
   signal bPop, bPopFifo: boolean;
   signal bByteEnableDirect: NiDmaByteEnable_t;
-  signal dCombinedStopRequest : boolean;
+  signal bStartStreamRequest : boolean;
 
+  signal vStopRequest : boolean;
+
+  --vhook_sigstart
   signal bByteCount: NiDmaBusByteCount_t;
   signal bByteLanePtr: NiDmaByteLane_t;
   signal bDmaReset: boolean;
   signal bFifoDataOut: NiDmaData_t;
   signal bFifoOverflow: boolean;
+  signal bFlushTimeoutRequest: boolean;
   signal bNumReadSamples: unsigned(kFifoCountWidth-1 downto 0);
   signal bOverflowStopRequest: boolean;
   signal bResetDone: boolean;
   signal bResetForFifo: boolean;
   signal bRsrvReadSpaces: boolean;
-  signal bStartStreamRequest: boolean;
-  signal bFlushTimeoutRequest: boolean;
   signal bStopStreamRequestFromDiagram: boolean;
   signal bStopStreamWithFlushRequest: boolean;
   signal bWriteDetected: boolean;
   signal dPushStateToBusClkDomain: boolean;
-  signal dDisable: boolean;
-  signal dFifoDataIn: std_logic_vector(kWrPortWidth-1 downto 0);
-  signal dOverflowStopRequest: boolean;
-  signal dPush: boolean;
-  signal dPushPop: boolean;
-  signal dResetForFifo: boolean;
-  signal dStateDisable: boolean;
-  signal dStreamStateValueFromControllerEarly: std_logic_vector(bStreamState'length-1 downto 0);
+  signal dStopRequest: boolean;
+  signal dStopRequestStrobe: boolean;
+  signal dStopWithFlushRequestStrobe: boolean;
+  signal vCtCountLoc: unsigned(vEmptyCount'length-1 downto 0);
+  signal vCtEnableOutBool: boolean;
+  signal vDisable: boolean;
+  signal vEnableOutLoc: boolean;
+  signal vFifoDataIn: std_logic_vector(kWrPortWidth-1 downto 0);
+  signal vOverflowStopRequest: boolean;
+  signal vPush: boolean;
+  signal vPushPop: boolean;
+  signal vResetForFifo: boolean;
+  signal vStateDisable: boolean;
+  signal vStreamState: StreamState_t;
+  signal vStreamStateFromController: StreamState_t;
+  signal vStreamStateValueFromControllerEarly: std_logic_vector(bStreamState'length-1 downto 0) := to_StreamStateValue(Unlinked);
+  --vhook_sigend
   
-  signal dStreamStateValueFromController: std_logic_vector(bStreamState'length-1 downto 0);
-  signal dStreamStateValueFromControllerDly: std_logic_vector(bStreamState'length-1 downto 0) := to_StreamStateValue(Unlinked);
-  signal dDisableEarly : boolean;
+  signal vStreamStateValueFromController: std_logic_vector(bStreamState'length-1 downto 0);
+  signal vStreamStateValueFromControllerDly: std_logic_vector(bStreamState'length-1 downto 0) := to_StreamStateValue(Unlinked);
+  signal vDisableEarly : boolean;
   
-  signal dAlmostFull        : boolean;
-  signal dInputValidQual    : boolean;
-  signal dReadyForInputBool : boolean;
-  signal dReadyForInputReg  : boolean := true;
+  signal vAlmostFull        : boolean;
+  signal vInputValidQual    : boolean;
+  signal vReadyForInputBool : boolean;
+  signal vReadyForInputReg  : boolean := true;
   
   
   signal bFlushReqFifo : std_logic;
@@ -230,18 +251,18 @@ begin
   bInputStreamInterfaceFromFifo.ByteLanePtr <= bByteLanePtr;
   bInputStreamInterfaceFromFifo.ResetDone <= bResetDone;
   bInputStreamInterfaceFromFifo.FifoDataOut <= bFifoDataOut;
-  bInputStreamInterfaceFromFifo.FifoFullCount <= resize(bFifoFullCount,
-    bInputStreamInterfaceFromFifo.FifoFullCount'length);
+  bInputStreamInterfaceFromFifo.FifoFullCount <= resize(bFifoFullCount, bInputStreamInterfaceFromFifo.FifoFullCount'length);
   bInputStreamInterfaceFromFifo.FifoOverflow <= bFifoOverflow;
   bInputStreamInterfaceFromFifo.StartStreamRequest <= bStartStreamRequest;
-  bInputStreamInterfaceFromFifo.StopStreamRequest <= bStopStreamRequestFromDiagram or
-    bFlushTimeoutRequest;
-  bInputStreamInterfaceFromFifo.StopStreamWithFlushRequest <=
-    bStopStreamWithFlushRequest or bOverflowStopRequest;
+  bInputStreamInterfaceFromFifo.StopStreamRequest <= bStopStreamRequestFromDiagram or bFlushTimeoutRequest;
+  bInputStreamInterfaceFromFifo.StopStreamWithFlushRequest <= bStopStreamWithFlushRequest or bOverflowStopRequest;
   bInputStreamInterfaceFromFifo.FlushRequest <= to_Boolean(bFlushReqFifo);
   bInputStreamInterfaceFromFifo.WritesDisabled <= bWritesDisabled;
   bInputStreamInterfaceFromFifo.WriteDetected <= bWriteDetected;
-  bInputStreamInterfaceFromFifo.StateInDefaultClkDomain <= bStateInDefaultClkDomain;
+
+  -- Cross the ViClk-domain stream state back to BusClk via the
+  -- HandshakeBaseResetCross (HandshakeStateToBusClkDomain).
+  bInputStreamInterfaceFromFifo.StateInDefaultClkDomain <= bStateInViClkDomain;
   
   bPopFifo <= bPop and ((not bTransferEnd) or bByteEnableDirect(bByteEnableDirect'left));
 
@@ -253,44 +274,70 @@ begin
     kHandshaking => true)                    -- in  boolean := false
   port map (
     aReset                     => aDiagramReset,               -- in  boolean
-    PClk                       => DefaultClk,                       -- in  std_logic
+    PClk                       => ViClk,                       -- in  std_logic
     BusClk                     => BusClk,                      -- in  std_logic
-    pEnableIn                  => dWriteFifo,                  -- in  boolean
+    pEnableIn                  => vWriteFifo,                  -- in  boolean
     pEnableOut                 => open,                        -- out boolean
     pEnableClear               => false,                       -- in  boolean
-    pHandshakingPushPopRequest => dInputValidQual,             -- in  boolean
-    pPushPop                   => dPushPop,                    -- out boolean
-    pDisable                   => dDisable,                    -- out boolean
-    pResetForFifo              => dResetForFifo,               -- out boolean
+    pHandshakingPushPopRequest => vInputValidQual,             -- in  boolean
+    pPushPop                   => vPushPop,                    -- out boolean
+    pDisable                   => vDisable,                    -- out boolean
+    pResetForFifo              => vResetForFifo,               -- out boolean
     bResetForFifo              => bResetForFifo,               -- out boolean
     bResetBitFromRegister      => bDmaReset,                   -- in  boolean
     bResetDone                 => bResetDone,                  -- out boolean
-    pStateDisable              => dStateDisable,               -- in  boolean
+    pStateDisable              => vStateDisable,               -- in  boolean
     pTimeout                   => (others => '0'),             -- in  std_logic_vector(
     pDataOut                   => open,                        -- out std_logic_vector(
-    pFlag                      => dFifoOverflowFlag,           -- out std_logic
+    pFlag                      => vFifoOverflowFlag,           -- out std_logic
     pDataOutFromFifo           => kDataZero,                   -- in  std_logic_vector(
-    pFlagFromFifo              => to_StdLogic(dFullFromFifo)); -- in  std_logic
+    pFlagFromFifo              => to_StdLogic(vFullFromFifo)); -- in  std_logic
 
 
-  -- Each sample in the dDataIn needs to be resized to actual sample size.
+  -- Each sample in the vDataIn needs to be resized to actual sample size.
   -- Swap the samples order in a write data port for the multi element write case.
-  DataInResize: process (dDataIn)
+  DataInResize: process (vDataIn)
   begin
     for i in 0 to kNumOfSamplesPerWrite-1 loop
       if kSignExtend then
-        dFifoDataIn((kNumOfSamplesPerWrite-i)*kSampleSize-1 downto
+        vFifoDataIn((kNumOfSamplesPerWrite-i)*kSampleSize-1 downto
         (kNumOfSamplesPerWrite-i-1)*kSampleSize) <= std_logic_vector(resize(
-            signed(dDataIn((i+1)*kSampleWidth-1 downto i*kSampleWidth)), kSampleSize));
+            signed(vDataIn((i+1)*kSampleWidth-1 downto i*kSampleWidth)), kSampleSize));
       else
-        dFifoDataIn((kNumOfSamplesPerWrite-i)*kSampleSize-1 downto
+        vFifoDataIn((kNumOfSamplesPerWrite-i)*kSampleSize-1 downto
         (kNumOfSamplesPerWrite-i-1)*kSampleSize) <= std_logic_vector(resize(
-            unsigned(dDataIn((i+1)*kSampleWidth-1 downto i*kSampleWidth)), kSampleSize));
+            unsigned(vDataIn((i+1)*kSampleWidth-1 downto i*kSampleWidth)), kSampleSize));
       end if;
     end loop;
   end process;
   
-
+  --vhook_e DmaPortInStrmFifo
+  --vhook_a kDataTypeIsSigned kSignExtend
+  --vhook_a kCorrelatedDataWidth bStreamState'length
+  --vhook_a kCorrelatedDataResetValue to_StreamStateValue(Unlinked)
+  --vhook_a aReset aDiagramReset
+  --vhook_a IClk ViClk
+  --vhook_a iReset vResetForFifo
+  --vhook_a iWrite vPush
+  --vhook_a iFlush vFlush
+  --vhook_a iDataIn vFifoDataIn
+  --vhook_a iEmptyCount vEmptyCountLoc
+  --vhook_a iWritesDisabled vWritesDisabledForController
+  --vhook_a iCorrelatedDataOut vStreamStateValueFromControllerEarly
+  --vhook_a OClk BusClk
+  --vhook_a oReset bResetForFifo
+  --vhook_a oRead bPopFifo
+  --vhook_a oPop bPop
+  --vhook_a oByteCount bByteCount
+  --vhook_a oByteLanePtr bByteLanePtr
+  --vhook_a oNumReadSamples bNumReadSamples
+  --vhook_a oRsrvReadSpaces bRsrvReadSpaces
+  --vhook_a oDataOut bFifoDataOut
+  --vhook_a oFullCount bFifoFullCount
+  --vhook_a oWritesDisabled bWritesDisabled
+  --vhook_a oWriteDetected bWriteDetected
+  --vhook_a oFlushreqFifo bFlushReqFifo
+  --vhook_a oCorrelatedDataIn bStreamState
   DmaPortInStrmFifox: entity work.DmaPortInStrmFifo (rtl)
     generic map (
       kAddressWidth             => kAddressWidth,                  -- in  natural := 8
@@ -303,14 +350,14 @@ begin
       kCorrelatedDataResetValue => to_StreamStateValue(Unlinked))  -- in  std_logic_vecto
     port map (
       aReset             => aDiagramReset,                         -- in  boolean
-      IClk               => DefaultClk,                                 -- in  std_logic
-      iReset             => dResetForFifo,                         -- in  boolean
-      iWrite             => dPush,                                 -- in  boolean
-      iFlush             => dFlush,                                -- in  boolean
-      iDataIn            => dFifoDataIn,                           -- in  std_logic_vecto
-      iEmptyCount        => dEmptyCountLoc,                        -- out unsigned(kFifoC
-      iWritesDisabled    => dWritesDisabledForController,          -- in  boolean
-      iCorrelatedDataOut => dStreamStateValueFromControllerEarly,  -- out std_logic_vecto
+      IClk               => ViClk,                                 -- in  std_logic
+      iReset             => vResetForFifo,                         -- in  boolean
+      iWrite             => vPush,                                 -- in  boolean
+      iFlush             => vFlush,                                -- in  boolean
+      iDataIn            => vFifoDataIn,                           -- in  std_logic_vecto
+      iEmptyCount        => vEmptyCountLoc,                        -- out unsigned(kFifoC
+      iWritesDisabled    => vWritesDisabledForController,          -- in  boolean
+      iCorrelatedDataOut => vStreamStateValueFromControllerEarly,  -- out std_logic_vecto
       OClk               => BusClk,                                -- in  std_logic
       oReset             => bResetForFifo,                         -- in  boolean
       oRead              => bPopFifo,                              -- in  boolean
@@ -327,38 +374,38 @@ begin
       oCorrelatedDataIn  => bStreamState);                         -- in  std_logic_vecto
       
   WritesDisabledDelayed:if kPeerToPeer generate        
-    StreamStateFlop: process (aDiagramReset, DefaultClk)
+    StreamStateFlop: process (aDiagramReset, ViClk)
     begin
       if aDiagramReset then
-        dStreamStateValueFromControllerDly <= to_StreamStateValue(Unlinked);
-      elsif rising_edge(DefaultClk) then
-        dStreamStateValueFromControllerDly <= dStreamStateValueFromControllerEarly;
+        vStreamStateValueFromControllerDly <= to_StreamStateValue(Unlinked);
+      elsif rising_edge(ViClk) then
+        vStreamStateValueFromControllerDly <= vStreamStateValueFromControllerEarly;
       end if;
     end process;
   end generate WritesDisabledDelayed;
       
-  dStreamStateValueFromController <= dStreamStateValueFromControllerDly when kPeerToPeer else
-                                    dStreamStateValueFromControllerEarly;
+  vStreamStateValueFromController <= vStreamStateValueFromControllerDly when kPeerToPeer else
+                                    vStreamStateValueFromControllerEarly;
       
 
   -- Report the number of elements available for writing as zero if it is a peer-to-peer
   -- stream and the stream is not enabled.
-  dEmptyCount <= dEmptyCountLoc when not dStateDisable else
+  vEmptyCount <= vEmptyCountLoc when not vStateDisable else
                  (others=>'0');
 
-  dCtCount <= resize(dEmptyCount, dCtCount'length);
+  vCtCount <= resize(vEmptyCount, vCtCount'length);
 
   -- Do not allow a push to occur when the FIFO is full.  This will prevent
   -- any overflows from occuring.
-  dPush <= dPushPop and not dFullFromFifo;
+  vPush <= vPushPop and not vFullFromFifo;
 
   -- The FIFO is full whenever the empty count is zero.
-  dFullFromFifo <= dEmptyCount < kNumOfSamplesPerWrite;
-  dFull <= to_boolean(dFifoOverflowFlag);
+  vFullFromFifo <= vEmptyCount < kNumOfSamplesPerWrite;
+  vFull <= to_boolean(vFifoOverflowFlag);
 
-  -- In case of Handshaking report the overflow condition only when the dInputValid is asserted
+  -- In case of Handshaking report the overflow condition only when the vInputValid is asserted
   -- while the FIFO is full.
-  dFifoOverflow <= to_stdlogic(to_boolean(dFifoOverflowFlag) and dInputValid);
+  vFifoOverflow <= to_stdlogic(to_boolean(vFifoOverflowFlag) and vInputValid);
   
   ---------------------------------------------------------------------------------------
   -- Handshaking interface 
@@ -366,32 +413,32 @@ begin
   -- This flag asserts when only one write operation can be performed
   -- The number of empty slots must be greater or equal than the amount written 
   -- in one transaction, but smaller than two write transactions 
-  dAlmostFull <= (dEmptyCount >= kNumOfSamplesPerWrite) and (dEmptyCount < (2*kNumOfSamplesPerWrite));
+  vAlmostFull <= (vEmptyCount >= kNumOfSamplesPerWrite) and (vEmptyCount < (2*kNumOfSamplesPerWrite));
   
   -- This flag is qualified with registered Ready For Input, because the 4-wire
   -- protocol explicitly states that Input Valid can only assert if Ready For Input was 
   -- asserted in the previous cycle. This behavior must be ensured by the upstream component,
   -- but we are making sure that it's correct by qualifying Input Valid here, also.
-  dInputValidQual <= dInputValid and dReadyForInputReg;
+  vInputValidQual <= vInputValid and vReadyForInputReg;
   
-  -- Added dDisableEarly for the P2P case using Handshaking
-  -- This disables dReadyForInputBool one cycle earlier, thus stopping the pushes as soon
+  -- Added vDisableEarly for the P2P case using Handshaking
+  -- This disables vReadyForInputBool one cycle earlier, thus stopping the pushes as soon
   -- as Flushing or Disable state begins. In Flushing or Disable, the FIFO will not accept any data, so
   -- we must alert the user one cycle earlier, since iReadyForInput indicates the readiness of the FIFO on
   -- the next cycle.
-  dReadyForInputBool <= not (dFullFromFifo or (dAlmostFull and dPushPop) or dDisable or dDisableEarly);
+  vReadyForInputBool <= not (vFullFromFifo or (vAlmostFull and vPushPop) or vDisable or vDisableEarly);
   
-  dReadyForInput <= dReadyForInputBool;
+  vReadyForInput <= vReadyForInputBool;
   
   -- By setting the register to true, pushed data will be accepted
   -- on the first cycle, if iInputValid is true. This was done to
   -- benefit designs where the enable chain is removed from the SCTL.
-  ReadyForInputFlop : process (DefaultClk, aDiagramReset)
+  ReadyForInputFlop : process (ViClk, aDiagramReset)
   begin
     if aDiagramReset then
-      dReadyForInputReg <= true;
-    elsif rising_edge (DefaultClk) then
-      dReadyForInputReg <= dReadyForInputBool;
+      vReadyForInputReg <= true;
+    elsif rising_edge (ViClk) then
+      vReadyForInputReg <= vReadyForInputBool;
     end if;
   end process ReadyForInputFlop;
   
@@ -402,9 +449,9 @@ begin
   ---------------------------------------------------------------------------------------
   StreamStateBlock: block
 
-    signal dStreamStateValue, dStreamStateValueFromController : StreamStateValue_t;
-    signal dStreamState, dStreamStateFromController : StreamState_t;
-    signal bPushStateToDefaultClkDomain : boolean;
+    signal vStreamStateValue : StreamStateValue_t;
+    signal vStreamState, vStreamStateFromController : StreamState_t;
+    signal bPushStateToViClkDomain : boolean;
 
   begin
 
@@ -416,59 +463,101 @@ begin
     -- handshaking for the ChinchDmaSourceStreamStateController would not be
     -- possible.
     
-    dWritesDisabled <= not (dStreamStateValue = to_StreamStateValue(Enabled));
-    dWritesDisabledForController <= not (dStreamStateFromController = Enabled);
-    dStateDisable <= dWritesDisabled when kPeerToPeer else false;
+    vWritesDisabled <= not (vStreamStateValue = to_StreamStateValue(Enabled));
+    vWritesDisabledForController <= not (vStreamStateFromController = Enabled);
+    vStateDisable <= vWritesDisabled when kPeerToPeer else false;
     
-    dDisableEarly <= not (to_StreamState(dStreamStateValueFromControllerEarly) = Enabled) 
+    vDisableEarly <= not (to_StreamState(vStreamStateValueFromControllerEarly) = Enabled) 
                       when kPeerToPeer else false;
                       
     -- For VI clock domain state reporting
-    dCombinedStopRequest <= dStopWithFlushRequest or dStopRequest or dOverflowStopRequest;
+    vStopRequest <= vStopWithFlushRequestStrobe or vStopRequestStrobe or vOverflowStopRequest;
 
-    -- NEED CLOCK CROSSING HERE
-    bStartStreamRequest <= dStartRequest;
+    -- Handshake strobe signals from ViClk domain to BusClk domain.
 
-    -- NEED CLOCK CROSSING HERE
-    bStopStreamRequestFromDiagram <= dCombinedStopRequest;
-    
-    -- NEED CLOCK CROSSING HERE
-    bStopStreamWithFlushRequest <= dStopWithFlushRequest;
+    HandshakeStopStreamRequest: entity work.HandshakeBool (struct)
+      port map (
+        aReset => aDiagramReset,
+        IClk   => ViClk,
+        iSig   => vStopRequestStrobe,
+        iReady => open,
+        OClk   => BusClk,
+        oSig   => bStopStreamRequestFromDiagram);
 
-    -- NEED CLOCK CROSSING HERE
-    bFlushTimeoutRequest <= dFlushTimeoutRequest;
+    HandshakeStopWithFlushRequest: entity work.HandshakeBool (struct)
+      port map (
+        aReset => aDiagramReset,
+        IClk   => ViClk,
+        iSig   => vStopWithFlushRequestStrobe,
+        iReady => open,
+        OClk   => BusClk,
+        oSig   => bStopStreamWithFlushRequest);
+
+    HandshakeStartStreamRequest: entity work.HandshakeBool (struct)
+      port map (
+        aReset => aDiagramReset,
+        IClk   => ViClk,
+        iSig   => vStartStreamRequest,
+        iReady => open,
+        OClk   => BusClk,
+        oSig   => bStartStreamRequest);
+
+    HandshakeFlushTimeoutRequest: entity work.HandshakeBool (struct)
+      port map (
+        aReset => aDiagramReset,
+        IClk   => ViClk,
+        iSig   => vFlushTimeoutRequest,
+        iReady => open,
+        OClk   => BusClk,
+        oSig   => bFlushTimeoutRequest);
 
 
     -------------------------------------------------------------------------------------
-    -- Stream State Outputs
+    -- Stream State Outputs (enable chains removed, directly driven)
     -------------------------------------------------------------------------------------
 
-    dStreamStateOut <= dStreamStateValue;
+    vStreamStateOut <= vStreamStateValue;
 
 
     -------------------------------------------------------------------------------------
     -- Handshake the Stream State
     -------------------------------------------------------------------------------------
 
-    dStreamStateFromController <= to_StreamState(dStreamStateValueFromController);
+    vStreamStateFromController <= to_StreamState(vStreamStateValueFromController);
 
-    -- Handshake the stream state from the VI clock domain back to the BusClk
+    -- Handshake the stream state from the default clock domain back to the BusClk
     -- domain.  This handshake requires the safe reset handshake because the request
     -- signal goes from the asynchronous diagram reset domain to the asynchronous bus
     -- reset domain.
 
-
+    --vhook_e HandshakeBaseResetCross HandshakeStateToBusClkDomain
+    --vhook_a kDataWidth vStreamStateValueFromController'length
+    --vhook_a aResetToDlyPush open
+    --vhook_a aResetToIResetFast open
+    --vhook_a aPushToggleDly open
+    --vhook_a aIReset aDiagramReset
+    --vhook_a IClk ViClk
+    --vhook_a iPush dPushStateToBusClkDomain
+    --vhook_a iData vStreamStateValueFromController
+    --vhook_a iStoredData open
+    --vhook_a iReady dPushStateToBusClkDomain
+    --vhook_a iOResetStatus open
+    --vhook_a aOReset aBusReset
+    --vhook_a OClk BusClk
+    --vhook_a oDataValid open
+    --vhook_a oDataAck true
+    --vhook_a oData bStateInViClkDomain
     HandshakeStateToBusClkDomain: entity work.HandshakeBaseResetCross (rtl)
       generic map (
-        kDataWidth => dStreamStateValueFromController'length)  -- in  integer := 1
+        kDataWidth => vStreamStateValueFromController'length)  -- in  integer := 1
       port map (
         aResetToDlyPush    => open,                             -- in  integer := 0
         aResetToIResetFast => open,                             -- in  integer := 0
         aPushToggleDly     => open,                             -- in  integer := 0
         aIReset            => aDiagramReset,                    -- in  boolean
-        IClk               => DefaultClk,                            -- in  std_logic
+        IClk               => ViClk,                       -- in  std_logic
         iPush              => dPushStateToBusClkDomain,         -- in  boolean
-        iData              => dStreamStateValueFromController,  -- in  std_logic_vector(k
+        iData              => vStreamStateValueFromController,  -- in  std_logic_vector(k
         iStoredData        => open,                             -- out std_logic_vector(k
         iReady             => dPushStateToBusClkDomain,         -- out boolean := false
         iOResetStatus      => open,                             -- out boolean := false
@@ -476,7 +565,7 @@ begin
         OClk               => BusClk,                           -- in  std_logic
         oDataValid         => open,                             -- out boolean := false
         oDataAck           => true,                             -- in  boolean := true
-        oData              => bStateInDefaultClkDomain);             -- out std_logic_vector(k
+        oData              => bStateInViClkDomain);        -- out std_logic_vector(k
 
 
     -------------------------------------------------------------------------------------
@@ -484,21 +573,27 @@ begin
     -------------------------------------------------------------------------------------
 
 
-    -- Track the state to report to the DefaultClk domain.
+    -- Track the state to report to the ViClk domain and ViClk domain.
     -- This component is used so that the state is immediately reported as
     -- flushing after a stop request is made before the actual state is reported as
     -- flushing.
 
-    StateHolderForDefaultClkDomain: entity work.DmaPortCommIfcComponentInputStateHolder (rtl)
+    --vhook_e DmaPortCommIfcComponentInputStateHolder StateHolderForViClkDomain
+    --vhook_a aReset aDiagramReset
+    --vhook_a ViClk ViClk
+    --vhook_a vStreamStateOut vStreamState
+    --vhook_a vStreamState vStreamStateFromController
+    --vhook_a vStopRequest vStopRequest
+    StateHolderForViClkDomain: entity work.DmaPortCommIfcComponentInputStateHolder (rtl)
       port map (
         aReset          => aDiagramReset,               -- in  boolean
-        ViClk           => DefaultClk,                  -- in  std_logic
-        vStreamStateOut => dStreamState,                -- out StreamState_t
-        vStreamState    => dStreamStateFromController,  -- in  StreamState_t
-        vStopRequest    => dCombinedStopRequest);       -- in  boolean
+        ViClk           => ViClk,                  -- in  std_logic
+        vStreamStateOut => vStreamState,                -- out StreamState_t
+        vStreamState    => vStreamStateFromController,  -- in  StreamState_t
+        vStopRequest    => vStopRequest);               -- in  boolean
 
 
-    dStreamStateValue <= to_StreamStateValue(dStreamState);
+    vStreamStateValue <= to_StreamStateValue(vStreamState);
 
 
     -------------------------------------------------------------------------------------
@@ -506,10 +601,9 @@ begin
     -------------------------------------------------------------------------------------
 
 
-    -- Stop the stream from the DefaultClk domain if an overflow occurs and disable on
+    -- Stop the stream from the ViClk domain if an overflow occurs and disable on
     -- overflow is enabled.
-    dOverflowStopRequest <= kDisableOnFifoTimeout and dStreamState = Enabled and
-      to_Boolean(dFifoOverflow);
+    vOverflowStopRequest <= kDisableOnFifoTimeout and vStreamState = Enabled and to_Boolean(vFifoOverflow);
 
     -------------------------------------------------------------------------------------
     -- Handshake the overflow stop request to the BusClk domain.
@@ -527,6 +621,23 @@ begin
     -- time required to handshake the overflow stop request.
     -------------------------------------------------------------------------------------
 
+    --vhook_e HandshakeBaseResetCross HandshakeOverflowStopRequest
+    --vhook_a kDataWidth 2
+    --vhook_a aResetToDlyPush open
+    --vhook_a aResetToIResetFast open
+    --vhook_a aPushToggleDly open
+    --vhook_a aIReset aDiagramReset
+    --vhook_a IClk ViClk
+    --vhook_a iPush vOverflowStopRequest
+    --vhook_a iData open
+    --vhook_a iStoredData open
+    --vhook_a iReady open
+    --vhook_a iOResetStatus open
+    --vhook_a aOReset aBusReset
+    --vhook_a OClk BusClk
+    --vhook_a oDataValid bOverflowStopRequest
+    --vhook_a oDataAck true
+    --vhook_a oData open
     HandshakeOverflowStopRequest: entity work.HandshakeBaseResetCross (rtl)
       generic map (
         kDataWidth => 2)  -- in  integer := 1
@@ -535,8 +646,8 @@ begin
         aResetToIResetFast => open,                  -- in  integer := 0
         aPushToggleDly     => open,                  -- in  integer := 0
         aIReset            => aDiagramReset,         -- in  boolean
-        IClk               => DefaultClk,                 -- in  std_logic
-        iPush              => dOverflowStopRequest,  -- in  boolean
+        IClk               => ViClk,                 -- in  std_logic
+        iPush              => vOverflowStopRequest,  -- in  boolean
         iData              => open,                  -- in  std_logic_vector(kDataWidth-1
         iStoredData        => open,                  -- out std_logic_vector(kDataWidth-1
         iReady             => open,                  -- out boolean := false
@@ -554,10 +665,10 @@ begin
   -- Overflow detector
   ---------------------------------------------------------------------------------------
   BlkOverflow: block
-    signal dFifoOverflowStrobe, dHsModuleReady : boolean;
+    signal vFifoOverflowStrobe, vHsModuleReady : boolean;
   begin
 
-    -- Create the FIFO overflow strobe based on the overflow signal and the push/pop signal.
+    -- Create the FIFO overflow strobe based on the overflow signal.
     -- Qualify this with the HS ready signal so that a push is not
     -- sent while the HS module is in the middle of a previous HS.  This means that an
     -- overflow could be missed by the module, but this will only happen if the HS were
@@ -566,8 +677,7 @@ begin
     -- between handshakes is less than the time for the host to receive and handle the
     -- interrupt.
 
-    dFifoOverflowStrobe <= to_Boolean(dFifoOverflow) and dPushPop and
-      dHsModuleReady;
+    vFifoOverflowStrobe <= to_Boolean(vFifoOverflow) and vPushPop and vHsModuleReady;
 
 
     -- This handshake requires the safe reset handshake because the bFifoOverflow signal
@@ -581,7 +691,23 @@ begin
     -- Set up the reset safe handshake equivalent to the HandshakeBool so that the
     -- true pulse is only seen for one clock cycle in the BusClk domain.
 
-
+    --vhook_e HandshakeBaseResetCross HandshakeOverflow
+    --vhook_a kDataWidth 2
+    --vhook_a aResetToDlyPush open
+    --vhook_a aResetToIResetFast open
+    --vhook_a aPushToggleDly open
+    --vhook_a aIReset aDiagramReset
+    --vhook_a IClk ViClk
+    --vhook_a iPush vFifoOverflowStrobe
+    --vhook_a iData open
+    --vhook_a iStoredData open
+    --vhook_a iReady vHsModuleReady
+    --vhook_a iOResetStatus open
+    --vhook_a aOReset aBusReset
+    --vhook_a OClk BusClk
+    --vhook_a oDataValid bFifoOverflow
+    --vhook_a oDataAck true
+    --vhook_a oData open
     HandshakeOverflow: entity work.HandshakeBaseResetCross (rtl)
       generic map (
         kDataWidth => 2)  -- in  integer := 1
@@ -590,11 +716,11 @@ begin
         aResetToIResetFast => open,                 -- in  integer := 0
         aPushToggleDly     => open,                 -- in  integer := 0
         aIReset            => aDiagramReset,        -- in  boolean
-        IClk               => DefaultClk,                -- in  std_logic
-        iPush              => dFifoOverflowStrobe,  -- in  boolean
+        IClk               => ViClk,                -- in  std_logic
+        iPush              => vFifoOverflowStrobe,  -- in  boolean
         iData              => open,                 -- in  std_logic_vector(kDataWidth-1 
         iStoredData        => open,                 -- out std_logic_vector(kDataWidth-1 
-        iReady             => dHsModuleReady,       -- out boolean := false
+        iReady             => vHsModuleReady,       -- out boolean := false
         iOResetStatus      => open,                 -- out boolean := false
         aOReset            => aBusReset,            -- in  boolean
         OClk               => BusClk,               -- in  std_logic

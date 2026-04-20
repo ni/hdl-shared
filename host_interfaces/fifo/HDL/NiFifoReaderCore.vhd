@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: HdlSharedOutputFifoInterface.vhd
+-- File: NiFifoReaderCore.vhd
 -- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
 -- Date: 12 June 2008
@@ -52,7 +52,7 @@ library work;
   use work.PkgNiDma.all;
 
 
-entity HdlSharedOutputFifoInterface is
+entity NiFifoReaderCore is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in bus data width words.
@@ -139,10 +139,10 @@ entity HdlSharedOutputFifoInterface is
       vStopRequestStrobe          : in  boolean
 
     );
-end HdlSharedOutputFifoInterface;
+end NiFifoReaderCore;
 
 
-architecture structure of HdlSharedOutputFifoInterface is
+architecture structure of NiFifoReaderCore is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,
