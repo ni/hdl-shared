@@ -172,6 +172,8 @@ architecture structure of NiFifoReaderCore is
   constant kFifoPopBufferDepth : positive := 6*kNumOfSamplesPerRead;
   constant kRamReadLatency : positive := 2;
   constant kFifoAdditiveLatency : natural := 1;
+ 
+  constant kTimeoutZero : std_logic_vector(31 downto 0) := (others => '0');
 
   signal vFifoData : std_logic_vector(kRdPortWidth-1 downto 0);
   signal vFifoDataResized : std_logic_vector(vDataOut'range);
@@ -300,7 +302,7 @@ begin
       bResetBitFromRegister      => bDmaReset,
       bResetDone                 => bResetDone,
       pStateDisable              => false,
-      pTimeout                   => (others => '0'),
+      pTimeout                   => kTimeoutZero,
       pDataOut                   => vDataOut,
       pFlag                      => vFifoUnderflowFlag,
       pDataOutFromFifo           => vBufferData,

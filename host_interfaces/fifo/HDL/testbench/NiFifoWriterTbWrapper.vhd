@@ -33,6 +33,8 @@ library work;
   use work.PkgDmaPortCommIfcStreamStates.all;
   use work.PkgNiDma.all;
 
+  use work.PkgCommIntConfiguration.kInputMaxTransfer;
+
 entity NiFifoWriterTbWrapper is
     generic(
 
@@ -172,7 +174,8 @@ begin
       kStreamNumber     => kStreamNumber,
       kEvictionTimeout  => kEvictionTimeout,
       kPeerToPeerStream => kPeerToPeerStream,
-      kFxpType          => kFxpType)
+      kFxpType          => kFxpType,
+      kInputMaxTransfer => kInputMaxTransfer)
     port map (
       aReset                        => aReset,
       bReset                        => bReset,

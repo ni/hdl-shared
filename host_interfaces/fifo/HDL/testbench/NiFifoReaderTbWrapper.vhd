@@ -33,6 +33,8 @@ library work;
   use work.PkgDmaPortCommIfcStreamStates.all;
   use work.PkgNiDma.all;
 
+  use work.PkgCommIntConfiguration.kOutputMaxTransfer;
+
 entity NiFifoReaderTbWrapper is
     generic(
 
@@ -168,7 +170,8 @@ begin
       kFifoDepth        => kFifoDepthIn64BitWords,
       kBaseOffset       => kBaseOffset,
       kStreamNumber     => kStreamNumber,
-      kFxpType          => kFxpType)
+      kFxpType          => kFxpType,
+      kOutputMaxTransfer => kOutputMaxTransfer)
     port map (
       aReset                          => aReset,
       bReset                          => bReset,

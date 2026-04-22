@@ -168,6 +168,8 @@ architecture structure of NiFifoWriterCore is
 
   constant kDataZero : std_logic_vector(kWrPortWidth-1 downto 0) := (others=>'0');
 
+  constant kTimeoutZero : std_logic_vector(31 downto 0) := (others => '0');
+
   -- The count width, which is the address width with the sample size taken into account.
   constant kFifoCountWidth : integer := FifoCountWidth(SampleSize => kSampleSize,
                                                        AddressWidth => kAddressWidth);
@@ -268,30 +270,30 @@ begin
 
   DmaPortCommIfcComponentEnableChainx: entity work.DmaPortCommIfcComponentEnableChain (rtl)
   generic map (
-    kInput       => true,                    -- in  boolean := true
-    kSCL         => true,                    -- in  boolean := false
-    kDataWidth   => kWrPortWidth,            -- in  natural := 32
-    kHandshaking => true)                    -- in  boolean := false
+    kInput       => true,
+    kSCL         => true,
+    kDataWidth   => kWrPortWidth,
+    kHandshaking => true)
   port map (
-    aReset                     => aDiagramReset,               -- in  boolean
-    PClk                       => ViClk,                       -- in  std_logic
-    BusClk                     => BusClk,                      -- in  std_logic
-    pEnableIn                  => vWriteFifo,                  -- in  boolean
-    pEnableOut                 => open,                        -- out boolean
-    pEnableClear               => false,                       -- in  boolean
-    pHandshakingPushPopRequest => vInputValidQual,             -- in  boolean
-    pPushPop                   => vPushPop,                    -- out boolean
-    pDisable                   => vDisable,                    -- out boolean
-    pResetForFifo              => vResetForFifo,               -- out boolean
-    bResetForFifo              => bResetForFifo,               -- out boolean
-    bResetBitFromRegister      => bDmaReset,                   -- in  boolean
-    bResetDone                 => bResetDone,                  -- out boolean
-    pStateDisable              => vStateDisable,               -- in  boolean
-    pTimeout                   => (others => '0'),             -- in  std_logic_vector(
-    pDataOut                   => open,                        -- out std_logic_vector(
-    pFlag                      => vFifoOverflowFlag,           -- out std_logic
-    pDataOutFromFifo           => kDataZero,                   -- in  std_logic_vector(
-    pFlagFromFifo              => to_StdLogic(vFullFromFifo)); -- in  std_logic
+    aReset                     => aDiagramReset,
+    PClk                       => ViClk,
+    BusClk                     => BusClk,
+    pEnableIn                  => vWriteFifo,
+    pEnableOut                 => open,
+    pEnableClear               => false,
+    pHandshakingPushPopRequest => vInputValidQual,
+    pPushPop                   => vPushPop,
+    pDisable                   => vDisable,
+    pResetForFifo              => vResetForFifo,
+    bResetForFifo              => bResetForFifo,
+    bResetBitFromRegister      => bDmaReset,
+    bResetDone                 => bResetDone,
+    pStateDisable              => vStateDisable,
+    pTimeout                   => kTimeoutZero,
+    pDataOut                   => open,
+    pFlag                      => vFifoOverflowFlag,
+    pDataOutFromFifo           => kDataZero,
+    pFlagFromFifo              => to_StdLogic(vFullFromFifo));
 
 
   -- Each sample in the vDataIn needs to be resized to actual sample size.
