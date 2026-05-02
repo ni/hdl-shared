@@ -174,8 +174,7 @@ begin
       kStreamNumber     => kStreamNumber,
       kEvictionTimeout  => kEvictionTimeout,
       kPeerToPeerStream => kPeerToPeerStream,
-      kFxpType          => kFxpType,
-      kInputMaxTransfer => kInputMaxTransfer)
+      kFxpType          => kFxpType)
     port map (
       aReset                        => aReset,
       bReset                        => bReset,

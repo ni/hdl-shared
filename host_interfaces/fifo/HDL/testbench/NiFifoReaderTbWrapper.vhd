@@ -170,8 +170,7 @@ begin
       kFifoDepth        => kFifoDepthIn64BitWords,
       kBaseOffset       => kBaseOffset,
       kStreamNumber     => kStreamNumber,
-      kFxpType          => kFxpType,
-      kOutputMaxTransfer => kOutputMaxTransfer)
+      kFxpType          => kFxpType)
     port map (
       aReset                          => aReset,
       bReset                          => bReset,
