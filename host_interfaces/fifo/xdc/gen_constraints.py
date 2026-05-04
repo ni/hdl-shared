@@ -52,7 +52,7 @@ BUS_PERIOD_NS = _effective_period_ns(BUS_FREQ_HZ, CLOCK_PPM, CLOCK_JITTER_PS)
 DMA_T = "hdl_dma_T"   # -> DMA_PERIOD_NS
 BUS_T = "hdl_bus_T"   # -> BUS_PERIOD_NS
 
-# Output path — .tcl file (sourced after link_design via STEPS.OPT_DESIGN.TCL.PRE)
+# Output path — .xdc file (sourced after link_design via STEPS.OPT_DESIGN.TCL.PRE)
 OUTPUT_FILE = Path(r"../objects/xdc/hdl_fifo_cdc_constraints.xdc")
 
 # =========================================================================
