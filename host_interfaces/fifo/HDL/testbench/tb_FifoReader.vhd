@@ -10,7 +10,7 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
---   Comprehensive testbench for NiFifoReader.
+--   Comprehensive testbench for NiSharedFifoReader.
 --   Tests DMA data transfer to VI FIFO, stream state transitions, reset,
 --   arbiter thresholds, SATCR management, and data integrity checking.
 --
@@ -157,7 +157,7 @@ begin
   ---------------------------------------------------------------------------
   -- DUT instantiation
   ---------------------------------------------------------------------------
-  DUT: entity work.NiFifoReaderTbWrapper (structure)
+  DUT: entity work.NiSharedFifoReaderTbWrapper (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kDataWidth            => kDataWidth,

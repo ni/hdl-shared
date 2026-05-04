@@ -1,6 +1,6 @@
 HDL/testbench/PkgCommIntConfiguration.vhd
-HDL/testbench/NiFifoWriterTbWrapper.vhd
-HDL/testbench/NiFifoReaderTbWrapper.vhd
+HDL/testbench/NiSharedFifoWriterTbWrapper.vhd
+HDL/testbench/NiSharedFifoReaderTbWrapper.vhd
 HDL/testbench/tb_FifoWriter.vhd
 HDL/testbench/tb_FifoReader.vhd
 HDL/testbench/tb_all.vhd

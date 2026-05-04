@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoReaderTbWrapper.vhd
+-- File: NiSharedFifoReaderTbWrapper.vhd
 -- Original Project: LabVIEW FPGA
 --
 -------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Purpose:
 --
 --   This block wraps the DMA output stream controller (DmaPortCommIfcOutputStream)
---   together with the simplified FIFO interface (NiFifoReaderCore).
+--   together with the simplified FIFO interface (NiSharedFifoReaderCore).
 --   Enable chains have been removed; the user-facing signals (read, stream
 --   state queries, and state transition requests) are exposed directly.
 --
@@ -35,7 +35,7 @@ library work;
 
   use work.PkgCommIntConfiguration.kOutputMaxTransfer;
 
-entity NiFifoReaderTbWrapper is
+entity NiSharedFifoReaderTbWrapper is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus
@@ -142,15 +142,15 @@ entity NiFifoReaderTbWrapper is
       bIrq : out IrqStatusToInterface_t
 
     );
-end NiFifoReaderTbWrapper;
+end NiSharedFifoReaderTbWrapper;
 
 
-architecture structure of NiFifoReaderTbWrapper is
+architecture structure of NiSharedFifoReaderTbWrapper is
 
   signal bOutputStreamInterfaceFromFifo : OutputStreamInterfaceFromFifo_t;
   signal bOutputStreamInterfaceToFifo   : OutputStreamInterfaceToFifo_t;
 
-  -- The DmaPortCommIfcOutputStream and NiFifoReaderCore both
+  -- The DmaPortCommIfcOutputStream and NiSharedFifoReaderCore both
   -- express kFifoDepth in 64-bit bus-width words.  Convert from the
   -- user-visible sample depth to 64-bit-word depth for these components.
   constant kSampleSizeInt  : natural := ActualSampleSize(
@@ -189,7 +189,7 @@ begin
       bIrq                            => bIrq);
 
 
-  NiFifoReaderx: entity work.NiFifoReader (structure)
+  NiSharedFifoReaderx: entity work.NiSharedFifoReader (structure)
     generic map (
       kFifoDepth            => kFifoDepthIn64BitWords,
       kSampleWidth          => kDataWidth,

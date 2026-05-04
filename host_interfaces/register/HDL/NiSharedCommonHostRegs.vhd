@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiCommonHostRegs.vhd
+-- File: NiSharedCommonHostRegs.vhd
 --
 -------------------------------------------------------------------------------
 -- (c) 2025 Copyright National Instruments Corporation
@@ -42,7 +42,7 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommunicationInterface.all;
   
-entity NiCommonHostRegs is
+entity NiSharedCommonHostRegs is
   generic (
     kSignature : std_logic_vector(31 downto 0);
     kVersion : std_logic_vector(31 downto 0);
@@ -56,9 +56,9 @@ entity NiCommonHostRegs is
     bRegPortIn  : in RegPortIn_t;
     bRegPortOut : out RegPortOut_t
   );  
-end entity NiCommonHostRegs;
+end entity NiSharedCommonHostRegs;
 
-architecture rtl of NiCommonHostRegs is
+architecture rtl of NiSharedCommonHostRegs is
 
   constant kNumRegisters : natural := 4;
   constant kSignatureOffset : natural := 0;
@@ -71,7 +71,7 @@ architecture rtl of NiCommonHostRegs is
 begin
 
 
-  SignatureReg: entity work.NiHostRegister
+  SignatureReg: entity work.NiSharedHostRegister
     generic map(
       kOffset => kSignatureOffset,
       kDefault => kSignature,
@@ -91,7 +91,7 @@ begin
     );
 
 
-  VersionReg: entity work.NiHostRegister
+  VersionReg: entity work.NiSharedHostRegister
     generic map(
       kOffset => kVersionOffset,
       kDefault => kVersion,
@@ -111,7 +111,7 @@ begin
     );
 
 
-  OldestCompatibleVersionReg: entity work.NiHostRegister
+  OldestCompatibleVersionReg: entity work.NiSharedHostRegister
     generic map(
       kOffset => kOldestCompatibleVersionOffset,
       kDefault => kOldestCompatibleVersion,
@@ -130,7 +130,7 @@ begin
       bFpgaDataOut   => open
     );
 
-  Scratch: entity work.NiHostRegister
+  Scratch: entity work.NiSharedHostRegister
     generic map(
       kOffset => kScratchOffset,
       kDefault => x"00000000",

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoWriterCore.vhd
+-- File: NiSharedFifoWriterCore.vhd
 -- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
 -- Date: 11 June 2008
@@ -55,7 +55,7 @@ library work;
   use work.PkgNiDma.all;
 
 
-entity NiFifoWriterCore is
+entity NiSharedFifoWriterCore is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus data width
@@ -149,10 +149,10 @@ entity NiFifoWriterCore is
       vStopWithFlushRequestStrobe   : in  boolean
 
     );
-end NiFifoWriterCore;
+end NiSharedFifoWriterCore;
 
 
-architecture structure of NiFifoWriterCore is
+architecture structure of NiSharedFifoWriterCore is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,

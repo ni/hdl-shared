@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoReader.vhd
+-- File: NiSharedFifoReader.vhd
 --
 -------------------------------------------------------------------------------
 -- (c) Copyright National Instruments Corporation
@@ -13,7 +13,7 @@
 --   User-facing DMA output (host-to-target) FIFO entity.
 --
 --   This is the top-level entity that users instantiate to read data from
---   a DMA FIFO sent by the host.  Internally it wraps NiFifoReaderCore.
+--   a DMA FIFO sent by the host.  Internally it wraps NiSharedFifoReaderCore.
 --
 -------------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ library work;
   use work.PkgDmaPortCommIfcStreamStates.all;
   use work.PkgNiDma.all;
 
-entity NiFifoReader is
+entity NiSharedFifoReader is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in bus data width
@@ -102,13 +102,13 @@ entity NiFifoReader is
       vStopRequestStrobe          : in  boolean
 
     );
-end NiFifoReader;
+end NiSharedFifoReader;
 
 
-architecture structure of NiFifoReader is
+architecture structure of NiSharedFifoReader is
 begin
 
-  NiFifoReaderCorex: entity work.NiFifoReaderCore (structure)
+  NiSharedFifoReaderCorex: entity work.NiSharedFifoReaderCore (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kSampleWidth          => kSampleWidth,

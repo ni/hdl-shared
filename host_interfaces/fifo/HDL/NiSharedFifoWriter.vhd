@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoWriter.vhd
+-- File: NiSharedFifoWriter.vhd
 --
 -------------------------------------------------------------------------------
 -- (c) Copyright National Instruments Corporation
@@ -14,7 +14,7 @@
 --
 --   This is the top-level entity that users instantiate to write data from
 --   FPGA logic into a DMA FIFO for transfer to the host.  Internally it
---   wraps NiFifoWriterCore.
+--   wraps NiSharedFifoWriterCore.
 --
 -------------------------------------------------------------------------------
 
@@ -31,7 +31,7 @@ library work;
   use work.PkgDmaPortCommIfcStreamStates.all;
   use work.PkgNiDma.all;
 
-entity NiFifoWriter is
+entity NiSharedFifoWriter is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus
@@ -107,13 +107,13 @@ entity NiFifoWriter is
       vStopWithFlushRequestStrobe : in  boolean
 
     );
-end NiFifoWriter;
+end NiSharedFifoWriter;
 
 
-architecture structure of NiFifoWriter is
+architecture structure of NiSharedFifoWriter is
 begin
 
-  NiFifoWriterCorex: entity work.NiFifoWriterCore (structure)
+  NiSharedFifoWriterCorex: entity work.NiSharedFifoWriterCore (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kSampleWidth          => kSampleWidth,

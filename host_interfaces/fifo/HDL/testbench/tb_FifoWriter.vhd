@@ -10,7 +10,7 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
---   Comprehensive testbench for NiFifoWriter.
+--   Comprehensive testbench for NiSharedFifoWriter.
 --   Tests FIFO push, DMA transfer, stream state transitions, reset,
 --   arbiter thresholds, flush operations, SATCR management, eviction
 --   timeout, and random stress testing.
@@ -161,7 +161,7 @@ begin
   ---------------------------------------------------------------------------
   -- DUT instantiation
   ---------------------------------------------------------------------------
-  DUT: entity work.NiFifoWriterTbWrapper (structure)
+  DUT: entity work.NiSharedFifoWriterTbWrapper (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kDataWidth            => kDataWidth,

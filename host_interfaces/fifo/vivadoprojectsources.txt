@@ -1,4 +1,4 @@
-HDL/NiFifoWriterCore.vhd
-HDL/NiFifoWriter.vhd
-HDL/NiFifoReaderCore.vhd
-HDL/NiFifoReader.vhd
+HDL/NiSharedFifoWriterCore.vhd
+HDL/NiSharedFifoWriter.vhd
+HDL/NiSharedFifoReaderCore.vhd
+HDL/NiSharedFifoReader.vhd

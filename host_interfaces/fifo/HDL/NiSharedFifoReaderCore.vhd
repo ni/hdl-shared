@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoReaderCore.vhd
+-- File: NiSharedFifoReaderCore.vhd
 -- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
 -- Date: 12 June 2008
@@ -52,7 +52,7 @@ library work;
   use work.PkgNiDma.all;
 
 
-entity NiFifoReaderCore is
+entity NiSharedFifoReaderCore is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in bus data width words.
@@ -139,10 +139,10 @@ entity NiFifoReaderCore is
       vStopRequestStrobe          : in  boolean
 
     );
-end NiFifoReaderCore;
+end NiSharedFifoReaderCore;
 
 
-architecture structure of NiFifoReaderCore is
+architecture structure of NiSharedFifoReaderCore is
 
   -- The constant represents the sample width rounded up to the closer standard data type.
   constant kSampleSize : integer := ActualSampleSize (SampleSizeInBits => kSampleWidth,

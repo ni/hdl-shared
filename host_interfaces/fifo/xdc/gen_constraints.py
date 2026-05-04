@@ -53,7 +53,7 @@ DMA_T = "hdl_dma_T"   # -> DMA_PERIOD_NS
 BUS_T = "hdl_bus_T"   # -> BUS_PERIOD_NS
 
 # Output path — .tcl file (sourced after link_design via STEPS.OPT_DESIGN.TCL.PRE)
-OUTPUT_FILE = Path(r"../objects/xdc/hdl_fifo_cdc_constraints.tcl")
+OUTPUT_FILE = Path(r"../objects/xdc/hdl_fifo_cdc_constraints.xdc")
 
 # =========================================================================
 #  XDC generation helpers

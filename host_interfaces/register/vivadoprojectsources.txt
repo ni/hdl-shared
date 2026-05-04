@@ -1,4 +1,4 @@
-HDL/NiHostRegister.vhd
-HDL/NiHostRegisterArray.vhd
-HDL/NiCommonHostRegs.vhd
-HDL/tb_NiHostRegister.vhd
+HDL/NiSharedHostRegister.vhd
+HDL/NiSharedHostRegisterArray.vhd
+HDL/NiSharedCommonHostRegs.vhd
+HDL/tb_NiSharedHostRegister.vhd

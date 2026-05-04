@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiFifoWriterTbWrapper.vhd
+-- File: NiSharedFifoWriterTbWrapper.vhd
 -- Original Project: LabVIEW FPGA
 --
 -------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 -- Purpose:
 --
 --   This block wraps the DMA input stream controller (DmaPortCommIfcInputStream)
---   together with the simplified FIFO interface (NiFifoWriterCore).
+--   together with the simplified FIFO interface (NiSharedFifoWriterCore).
 --   Enable chains have been removed; the user-facing signals (write, flush,
 --   stream state queries, and state transition requests) are exposed directly.
 --
@@ -35,7 +35,7 @@ library work;
 
   use work.PkgCommIntConfiguration.kInputMaxTransfer;
 
-entity NiFifoWriterTbWrapper is
+entity NiSharedFifoWriterTbWrapper is
     generic(
 
       -- kFifoDepth      : This is the size of the DMA FIFO in terms of bus
@@ -156,10 +156,10 @@ entity NiFifoWriterTbWrapper is
       bIrq : out IrqStatusToInterface_t
 
     );
-end NiFifoWriterTbWrapper;
+end NiSharedFifoWriterTbWrapper;
 
 
-architecture structure of NiFifoWriterTbWrapper is
+architecture structure of NiSharedFifoWriterTbWrapper is
 
   signal bInputStreamInterfaceFromFifo : InputStreamInterfaceFromFifo_t;
   signal bInputStreamInterfaceToFifo   : InputStreamInterfaceToFifo_t;
@@ -195,7 +195,7 @@ begin
       bIrq                          => bIrq);
 
 
-  NiFifoWriterx: entity work.NiFifoWriter (structure)
+  NiSharedFifoWriterx: entity work.NiSharedFifoWriter (structure)
     generic map (
       kFifoDepth            => kFifoDepth,
       kSampleWidth          => kDataWidth,

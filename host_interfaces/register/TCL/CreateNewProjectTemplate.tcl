@@ -8,7 +8,7 @@ ADD_FILES
 
 set_property top TOP_ENTITY [current_fileset]
 
-set_property top tb_NiHostRegister [current_fileset]
+set_property top TOP_ENTITY [current_fileset]
 set_property source_mgmt_mode All [current_project]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1

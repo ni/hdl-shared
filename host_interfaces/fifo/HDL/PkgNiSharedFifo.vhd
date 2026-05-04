@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------------------
 --
--- File: PkgNiFifo.vhd
+-- File: PkgNiSharedFifo.vhd
 --
 ------------------------------------------------------------------------------------------
 -- (c) 2026 Copyright National Instruments Corporation
@@ -26,7 +26,7 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommIntConfiguration.all;
 
-package PkgNiFifo is
+package PkgNiSharedFifo is
 
 
   -- Starting index where user HDL FIFOs are inserted into kDmaFifoConfArray.
@@ -74,9 +74,9 @@ package PkgNiFifo is
     StartIndex : natural
   ) return DmaChannelConfArray_t;
 
-end PkgNiFifo;
+end PkgNiSharedFifo;
 
-package body PkgNiFifo is
+package body PkgNiSharedFifo is
 
   function DmaChannelBaseAddress(ChannelIndex : natural) return natural is
   begin
@@ -111,4 +111,4 @@ package body PkgNiFifo is
     return Result;
   end function;
 
-end PkgNiFifo;
+end PkgNiSharedFifo;

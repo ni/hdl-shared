@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: NiHostRegisterArray.vhd
+-- File: NiSharedHostRegisterArray.vhd
 --
 -------------------------------------------------------------------------------
 -- (c) 2025 Copyright National Instruments Corporation
@@ -10,7 +10,7 @@
 --
 -- Purpose:
 -- This entity builds a bank of kNumRegisters independent 32-bit shared registers,
--- each implemented by one NiHostRegister instance.
+-- each implemented by one NiSharedHostRegister instance.
 --
 -- Addressing/model:
 -- - Register i is placed at byte address: kBaseAddress + (4 * i).
@@ -46,7 +46,7 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommunicationInterface.all;
   
-entity NiHostRegisterArray is
+entity NiSharedHostRegisterArray is
   generic(
     kNumRegisters : natural;
     kBaseAddress : natural;
@@ -69,9 +69,9 @@ entity NiHostRegisterArray is
     bFpgaDataIn : in Slv32Ary_t(0 to kNumRegisters-1);
     bFpgaDataOut : out Slv32Ary_t(0 to kNumRegisters-1)
   );  
-end entity NiHostRegisterArray;
+end entity NiSharedHostRegisterArray;
 
-architecture rtl of NiHostRegisterArray is
+architecture rtl of NiSharedHostRegisterArray is
 
   type RegPortOutArray_t is array (natural range <>) of RegPortOut_t;
   signal bRegPortOutArray : RegPortOutArray_t(0 to kNumRegisters-1);
@@ -89,9 +89,9 @@ begin
     report "kUseFpgaAck must be indexed 0 to kNumRegisters-1"
     severity failure;
 
-  -- Generate instances of NiHostRegister
+  -- Generate instances of NiSharedHostRegister
   GenRegisters: for i in 0 to kNumRegisters-1 generate
-    RegInst: entity work.NiHostRegister
+    RegInst: entity work.NiSharedHostRegister
       generic map(
         kOffset => kBaseAddress + (4 * i),
         kDefault => kDefault(i),
