@@ -1,12 +1,12 @@
-set ProjName {PROJ_NAME}
-create_project -force $ProjName [pwd] -part FPGA_PART
+set ProjName {${project_name}}
+create_project -force $ProjName [pwd] -part ${fpga_part}
 set_property target_language VHDL [current_project]
 
-ADD_FILES
+${add_files}
 
-SET_VHDL2008_FILES
+${set_vhdl2008_files}
 
-set_property top TOP_ENTITY [current_fileset]
+set_property top ${top_entity} [current_fileset]
 set_property source_mgmt_mode All [current_project]
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
