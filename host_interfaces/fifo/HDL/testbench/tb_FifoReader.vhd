@@ -58,12 +58,15 @@ architecture test of tb_FifoReader is
     FxpType          => kFxpType);
   constant kSampleBytes    : natural := kSampleSize / 8;
   constant kFifoDataWidth  : natural := kSampleSize;  -- sample size, NOT FIFO port width
-  -- Convert to 64-bit-word depth (same as what the wrapper computes internally)
-  constant kFifoDepthIn64  : natural := (kFifoDepth + 1) * kFifoDataWidth / 64 - 1;
-  constant kFifoCountWidth : natural := Log2(kFifoDepthIn64);
+  -- Compute FIFO depth in samples, matching the DUT's internal computation:
+  -- DUT uses FifoCountWidth = Log2(kFifoDepth) + Log2(kNiDmaDataWidth/kSampleSize)
+  -- and kFifoDepthInSamples = 2**kFifoCountWidth - 1
+  constant kFifoCountWidth : natural := Log2(kFifoDepth + 1) +
+    Log2(kNiDmaDataWidth / kFifoDataWidth);
+  constant kFifoDepthInSamples : natural := 2**kFifoCountWidth - 1;
   constant kMaxTrackable   : natural := 2**kFifoCountWidth - 1;
-  constant kMaxTransfer    : natural := kNiDmaOutputMaxTransfer;  -- 128 bytes
-  constant kBusWidthBytes  : natural := 8;  -- 64-bit bus
+  constant kMaxTransfer    : natural := kNiDmaOutputMaxTransfer;
+  constant kBusWidthBytes  : natural := kNiDmaDataWidthInBytes;
 
   -- Register offsets (from PkgDmaPortCommIfcRegs)
   constant kControlOffset         : natural := 0;
@@ -497,10 +500,10 @@ begin
       assert Length > 0
         report "SendPacket: trying to send 0 bytes" severity error;
 
-      NumTransfers := (StartingByteLane + Length + 7) / 8;
-      BytesInLastWord := (StartingByteLane + Length) mod 8;
+      NumTransfers := (StartingByteLane + Length + kBusWidthBytes - 1) / kBusWidthBytes;
+      BytesInLastWord := (StartingByteLane + Length) mod kBusWidthBytes;
       if BytesInLastWord = 0 then
-        BytesInLastWord := 8;
+        BytesInLastWord := kBusWidthBytes;
       end if;
 
       CurrentSampleValue := StartingValue;
@@ -668,12 +671,15 @@ begin
     -- GetNextPacketSize: predict DUT's next request size
     --------------------------------------------------------------------------
     function GetNextPacketSize(
-      Satcr        : natural;
-      EmptyCount   : natural;
+      Satcr        : integer;
+      EmptyCount   : integer;
       MaxPktSize   : natural
     ) return natural is
     begin
-      if EmptyCount > kFifoDepthIn64/4 or
+      if Satcr <= 0 or EmptyCount <= 0 then
+        return 0;
+      end if;
+      if EmptyCount > kFifoDepthInSamples/4 or
          (EmptyCount*kFifoDataWidth/8 >= MaxPktSize and Satcr >= MaxPktSize) then
         if Satcr < EmptyCount*kFifoDataWidth/8 and Satcr < MaxPktSize then
           return Satcr;
@@ -688,9 +694,9 @@ begin
     end function;
 
     --------------------------------------------------------------------------
-    -- Smaller: return the smaller of two naturals
+    -- Smaller: return the smaller of two integers
     --------------------------------------------------------------------------
-    function Smaller(A, B : natural) return natural is
+    function Smaller(A, B : integer) return integer is
     begin
       if A < B then return A; else return B; end if;
     end function;
@@ -702,9 +708,9 @@ begin
       NumOfBytes : natural
     ) is
       variable NextPacketSize : natural;
-      variable CurrentReqSatcr : natural;
-      variable CurrentSatcr : natural;
-      variable CurrentEmptyCount : natural;
+      variable CurrentReqSatcr : integer;
+      variable CurrentSatcr : integer;
+      variable CurrentEmptyCount : integer;
       variable CurrentByteLane : natural;
     begin
       ReadSatcrVerify(0);
@@ -713,7 +719,7 @@ begin
 
       CurrentSatcr := NumOfBytes;
       CurrentReqSatcr := NumOfBytes;
-      CurrentEmptyCount := kFifoDepthIn64;
+      CurrentEmptyCount := kFifoDepthInSamples;
       CurrentByteLane := 0;
 
       LinkStream;
@@ -723,7 +729,7 @@ begin
       while CurrentSatcr /= 0 loop
         NextPacketSize := GetNextPacketSize(
           Satcr      => CurrentReqSatcr,
-          EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthIn64),
+          EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthInSamples),
           MaxPktSize => AlignmentSize);
 
         -- Wait for arbiter request
@@ -757,6 +763,7 @@ begin
         end if;
 
         CurrentReqSatcr := CurrentReqSatcr - ActualRequestByteCount;
+        if CurrentReqSatcr < 0 then CurrentReqSatcr := 0; end if;
         BusClkWait(1);
 
         SendPacket(
@@ -764,9 +771,11 @@ begin
           StartingByteLane => CurrentByteLane);
 
         CurrentSatcr := CurrentSatcr - ActualRequestByteCount;
+        if CurrentSatcr < 0 then CurrentSatcr := 0; end if;
         CurrentEmptyCount := CurrentEmptyCount -
           ActualRequestByteCount*8/kFifoDataWidth;
-        CurrentByteLane := (CurrentByteLane + ActualRequestByteCount) mod 8;
+        if CurrentEmptyCount < 0 then CurrentEmptyCount := 0; end if;
+        CurrentByteLane := (CurrentByteLane + ActualRequestByteCount) mod kBusWidthBytes;
 
         BusClkWait(1);
 
@@ -796,9 +805,9 @@ begin
       NumOfBytes : natural
     ) is
       variable NextPacketSize : natural;
-      variable CurrentReqSatcr : natural;
-      variable CurrentSatcr : natural;
-      variable CurrentEmptyCount : natural;
+      variable CurrentReqSatcr : integer;
+      variable CurrentSatcr : integer;
+      variable CurrentEmptyCount : integer;
       variable CurrentByteLane : natural;
       variable NumPointsSent : natural;
     begin
@@ -808,7 +817,7 @@ begin
 
       CurrentSatcr := NumOfBytes;
       CurrentReqSatcr := NumOfBytes;
-      CurrentEmptyCount := kFifoDepthIn64;
+      CurrentEmptyCount := kFifoDepthInSamples;
       CurrentByteLane := 0;
 
       LinkStream;
@@ -820,7 +829,7 @@ begin
 
         NextPacketSize := GetNextPacketSize(
           Satcr      => CurrentReqSatcr,
-          EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthIn64),
+          EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthInSamples),
           MaxPktSize => AlignmentSize);
 
         -- Fill FIFO: send packets until no more room
@@ -854,6 +863,7 @@ begin
           end if;
 
           CurrentReqSatcr := CurrentReqSatcr - ActualRequestByteCount;
+          if CurrentReqSatcr < 0 then CurrentReqSatcr := 0; end if;
           BusClkWait(1);
 
           SendPacket(
@@ -861,9 +871,11 @@ begin
             StartingByteLane => CurrentByteLane);
 
           CurrentSatcr := CurrentSatcr - ActualRequestByteCount;
+          if CurrentSatcr < 0 then CurrentSatcr := 0; end if;
           CurrentEmptyCount := CurrentEmptyCount -
             ActualRequestByteCount*8/kFifoDataWidth;
-          CurrentByteLane := (CurrentByteLane + ActualRequestByteCount) mod 8;
+          if CurrentEmptyCount < 0 then CurrentEmptyCount := 0; end if;
+          CurrentByteLane := (CurrentByteLane + ActualRequestByteCount) mod kBusWidthBytes;
           NumPointsSent := NumPointsSent +
             ActualRequestByteCount*8/kFifoDataWidth;
 
@@ -872,7 +884,7 @@ begin
 
           NextPacketSize := GetNextPacketSize(
             Satcr      => CurrentReqSatcr,
-            EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthIn64),
+            EmptyCount => Smaller(CurrentEmptyCount, kFifoDepthInSamples),
             MaxPktSize => AlignmentSize);
         end loop;
 
@@ -890,7 +902,7 @@ begin
         RegisterRead(Address => kBaseOffset + kSatcrOffset);
         CurrentReqSatcr := to_integer(unsigned(readValue));
         CurrentSatcr := CurrentReqSatcr;
-        CurrentEmptyCount := kFifoDepthIn64;
+        CurrentEmptyCount := kFifoDepthInSamples;
       end loop;
 
       DisableStream;

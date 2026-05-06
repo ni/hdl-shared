@@ -45,8 +45,8 @@ package PkgCommIntConfiguration is
   constant kDmaDataWidth          : positive := 64;
   constant kDmaAddressWidth       : positive := 32;
   constant kBusBaggageWidth       : natural  := 6;
-  constant kInputMaxTransfer      : natural  := 128;
-  constant kOutputMaxTransfer     : natural  := 128; 
+  constant kInputMaxTransfer      : natural  := 1024;
+  constant kOutputMaxTransfer     : natural  := 1024; 
 
   -- The two constants below define the address range allocated for writing
   -- HighSpeedSink FIFOs.  kDmaHighSpeedSinkSize needs to be a power-of-two

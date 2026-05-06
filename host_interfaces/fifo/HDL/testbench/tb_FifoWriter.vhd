@@ -62,8 +62,8 @@ architecture test of tb_FifoWriter is
   constant kSampleBytes    : natural := kSampleSize / 8;
   constant kFifoCountWidth : natural := Log2(kFifoDepth);
   constant kMaxTrackable   : natural := 2**kFifoCountWidth - 1;
-  constant kMaxTransfer    : natural := kNiDmaInputMaxTransfer;  -- 128 bytes
-  constant kBusWidthBytes  : natural := 8;  -- 64-bit bus
+  constant kMaxTransfer    : natural := kNiDmaInputMaxTransfer;
+  constant kBusWidthBytes  : natural := kNiDmaDataWidthInBytes;
 
   -- Register offsets
   constant kControlOffset         : natural := 0;
@@ -1342,7 +1342,7 @@ begin
     -- Write SATCR and fill FIFO so DMA wants to transfer
     RegisterWrite(Value => 4096, Address => kBaseOffset + kSatcrOffset);
     BusClkWait(5);
-    FillFifo(1, 64);
+    FillFifo(1, kMaxTransfer / kSampleBytes);
     BusClkWait(20);
     -- Arbiter should be requesting (SATCR > 0, FIFO has data)
     assert bArbiterNormalReq = '1' or bArbiterEmergencyReq = '1'
