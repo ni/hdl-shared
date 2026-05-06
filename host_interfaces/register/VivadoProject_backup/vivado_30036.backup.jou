@@ -1,0 +1,13 @@
+#-----------------------------------------------------------
+# Vivado v2021.1 (64-bit)
+# SW Build 3247384 on Thu Jun 10 19:36:33 MDT 2021
+# IP Build 3246043 on Fri Jun 11 00:30:35 MDT 2021
+# Start of session at: Wed Feb 25 14:32:08 2026
+# Process ID: 30036
+# Current directory: C:/dev/github8/hdl-shared/host_interfaces/register/VivadoProject
+# Command line: vivado.exe HdlRegister.xpr -mode batch -source C:\dev\github8\hdl-shared\host_interfaces\register\objects/TCL/UpdateProjectFiles.tcl
+# Log file: C:/dev/github8/hdl-shared/host_interfaces/register/VivadoProject/vivado.log
+# Journal file: C:/dev/github8/hdl-shared/host_interfaces/register/VivadoProject\vivado.jou
+#-----------------------------------------------------------
+open_project HdlRegister.xpr
+source {C:\dev\github8\hdl-shared\host_interfaces\register\objects/TCL/UpdateProjectFiles.tcl}

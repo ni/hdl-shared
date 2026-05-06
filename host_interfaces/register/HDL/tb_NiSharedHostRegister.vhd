@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: tb_HdlSharedHostRegister.vhd
+-- File: tb_NiSharedHostRegister.vhd
 --
 -------------------------------------------------------------------------------
 -- (c) 2025 Copyright National Instruments Corporation
@@ -9,7 +9,7 @@
 -------------------------------------------------------------------------------
 --
 -- Purpose:
--- Testbench for HdlSharedHostRegister entity to verify:
+-- Testbench for NiSharedHostRegister entity to verify:
 -- - Host read/write operations
 -- - FPGA read/write operations
 -- - Default value initialization
@@ -27,10 +27,10 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommunicationInterface.all;
 
-entity tb_HdlSharedHostRegister is
-end entity tb_HdlSharedHostRegister;
+entity tb_NiSharedHostRegister is
+end entity tb_NiSharedHostRegister;
 
-architecture sim of tb_HdlSharedHostRegister is
+architecture sim of tb_NiSharedHostRegister is
 
   -- Constants
   constant kClkPeriod : time := 10 ns;
@@ -100,7 +100,7 @@ begin
   BusClk <= not BusClk after kClkPeriod/2 when not TestDone else '0';
 
   -- DUT: Standard mode
-  DUT_Standard: entity work.HdlSharedHostRegister
+  DUT_Standard: entity work.NiSharedHostRegister
     generic map(
       kOffset => kStandardOffset,
       kDefault => kDefaultValue,
@@ -120,7 +120,7 @@ begin
     );
 
   -- DUT: Host read-only mode
-  DUT_ReadOnly: entity work.HdlSharedHostRegister
+  DUT_ReadOnly: entity work.NiSharedHostRegister
     generic map(
       kOffset => kReadOnlyOffset,
       kDefault => kDefaultValue,
@@ -140,7 +140,7 @@ begin
     );
 
   -- DUT: FPGA Acknowledgment mode
-  DUT_FpgaAck: entity work.HdlSharedHostRegister
+  DUT_FpgaAck: entity work.NiSharedHostRegister
     generic map(
       kOffset => kFpgaAckOffset,
       kDefault => kDefaultValue,
@@ -159,7 +159,7 @@ begin
       bFpgaDataOut   => bFpgaDataOut_FpgaAck
     );
 
-  DUT_CommonHostRegs: entity work.HdlSharedCommonHostRegs
+  DUT_CommonHostRegs: entity work.NiSharedCommonHostRegs
     generic map(
       kSignature => kCommonSignatureValue,
       kVersion => kCommonVersionValue,
@@ -172,7 +172,7 @@ begin
       bRegPortOut => bRegPortOut_Common
     );
 
-  DUT_Array: entity work.HdlSharedHostRegisterArray
+  DUT_Array: entity work.NiSharedHostRegisterArray
     generic map(
       kNumRegisters => kArrayNumRegisters,
       kBaseAddress => kArrayBaseOffset,

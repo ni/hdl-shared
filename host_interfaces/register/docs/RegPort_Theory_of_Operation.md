@@ -172,4 +172,4 @@ bFpgaAck:       false  false  false  true   false  false
 
 ## Example
 
-The `HdlSharedHostRegister` implementation demonstrates all these principles with both basic (always-ready) and advanced (acknowledged) operating modes.
+The `NiHostRegister` implementation demonstrates all these principles with both basic (always-ready) and advanced (acknowledged) operating modes.

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- File: HdlSharedHostRegister.vhd
+-- File: NiSharedHostRegister.vhd
 
 --
 -------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommunicationInterface.all;
   
-entity HdlSharedHostRegister is
+entity NiSharedHostRegister is
   generic(
     kOffset  : natural := 0;
     kDefault  : std_logic_vector(31 downto 0);
@@ -75,9 +75,9 @@ entity HdlSharedHostRegister is
     bFpgaDataOut      : out std_logic_vector(31 downto 0)
 
   );  
-end entity HdlSharedHostRegister;
+end entity NiSharedHostRegister;
 
-architecture rtl of HdlSharedHostRegister is
+architecture rtl of NiSharedHostRegister is
 
   signal bRegData : std_logic_vector(31 downto 0);
   signal bRegAddressed : boolean;
