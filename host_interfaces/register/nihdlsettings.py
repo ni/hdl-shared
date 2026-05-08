@@ -16,5 +16,3 @@ def pre_all(context):
 
     config.add_hdl_file_list("vivadoprojectsources.txt")
     config.add_hdl_file_list("vivadoprojectdeps.txt")
-
-    config.set_use_gen_lv_window_files(False)
