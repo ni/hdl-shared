@@ -20,8 +20,6 @@ def pre_all(context):
     config.add_hdl_file_list("vivadoprojecttestbenchsources.txt")
     config.add_hdl_file_list("../../deps/flexrio-deps/hdl_shared_deps_list/hdlsharedvivadoprojectdeps.txt")
 
-    config.set_use_gen_lv_window_files(False)
-
     # --- ModelSim Settings ---
     config.set_modelsim_project_path("ModelSimProject/HdlInputFifo.mpf")
     config.add_modelsim_file_list("vivadoprojectsources.txt")
