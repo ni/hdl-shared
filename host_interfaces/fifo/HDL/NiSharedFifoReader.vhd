@@ -80,25 +80,42 @@ entity NiSharedFifoReader is
       bOutputStreamInterfaceFromFifo : out OutputStreamInterfaceFromFifo_t;
 
       -------------------------------------------------------------------------
-      -- User VI interface for reading
+      -- User VI interface for reading (all signals in ViClk domain)
       -------------------------------------------------------------------------
 
+      -- User logic clock for all v-prefixed signals below
       ViClk          : in std_logic;
+
+      -- Data output. Only valid when vOutputValid is true. Capture on that cycle.
       vDataOut       : out std_logic_vector(kSampleWidth*kNumOfSamplesPerRead-1 downto 0);
+
+      -- FIFO empty status. Check before reading. Do not assert vReadFifo when true.
       vEmpty         : out boolean;
+
+      -- Read strobe. Assert for exactly one ViClk cycle to pop data from the FIFO.
       vReadFifo      : in  boolean;
+
+      -- Current number of elements in the FIFO. Valid every ViClk cycle.
       vCtCount       : out unsigned(31 downto 0);
 
-      -- Handshaking signals
+      -- Data valid flag. When true, vDataOut holds valid data — capture it this cycle.
       vOutputValid     : out boolean;
+
+      -- Handshaking: assert true when ready to accept data. Tie true if always ready.
+      -- When false, the FIFO holds vDataOut stable until this is asserted.
       vReadyForOutput  : in  boolean;
 
       -------------------------------------------------------------------------
-      -- User VI interface for stream state info and transitioning
+      -- User VI interface for stream state info and transitioning (ViClk domain)
       -------------------------------------------------------------------------
 
+      -- Current stream state. Only read data when this equals kStreamStateEnabled ("10").
       vStreamStateOut             : out StreamStateValue_t;
+
+      -- Strobe: assert for one ViClk cycle to request Disabled -> Enabled transition.
       vStartStreamRequest         : in  boolean;
+
+      -- Strobe: assert for one ViClk cycle to request immediate stop (Enabled -> Disabled).
       vStopRequestStrobe          : in  boolean
 
     );

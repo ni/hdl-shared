@@ -1,3 +1,5 @@
 objects/
 deps/
 modelsim/
+__pycache__/
+.venv/
