@@ -82,28 +82,50 @@ entity NiSharedFifoWriter is
       bInputStreamInterfaceFromFifo : out InputStreamInterfaceFromFifo_t;
 
       -------------------------------------------------------------------------
-      -- User VI interface for writing
+      -- User VI interface for writing (all signals in ViClk domain)
       -------------------------------------------------------------------------
 
+      -- User logic clock for all v-prefixed signals below
       ViClk          : in std_logic;
+
+      -- Data to write. Must be stable on the cycle vWriteFifo is asserted.
       vDataIn        : in  std_logic_vector(kSampleWidth*kNumOfSamplesPerWrite-1 downto 0);
+
+      -- FIFO full status. Check before writing. Do not assert vWriteFifo when true.
       vFull          : out boolean;
+
+      -- Write strobe. Assert for exactly one ViClk cycle to push vDataIn into the FIFO.
       vWriteFifo     : in  boolean;
+
+      -- Flush strobe. Assert to flush partial data to host. Tie false if unused.
       vFlush         : in  boolean;
+
+      -- Current number of elements in the FIFO. Valid every ViClk cycle.
       vCtCount       : out unsigned(31 downto 0);
 
-      -- Handshaking signals
+      -- Handshaking: assert true when vDataIn is valid and ready to be written.
       vInputValid    : in  boolean;
+
+      -- Handshaking: FIFO is ready to accept data. Check before writing in handshake mode.
       vReadyForInput : out boolean;
 
       -------------------------------------------------------------------------
-      -- User VI interface for stream state info and transitioning
+      -- User VI interface for stream state info and transitioning (ViClk domain)
       -------------------------------------------------------------------------
 
+      -- Current stream state. Only write data when this equals kStreamStateEnabled ("10").
       vStreamStateOut             : out StreamStateValue_t;
+
+      -- Strobe: assert for one ViClk cycle to request Disabled -> Enabled transition.
       vStartStreamRequest         : in  boolean;
+
+      -- Strobe: assert for one ViClk cycle to request immediate stop (Enabled -> Disabled).
       vStopRequestStrobe          : in  boolean;
+
+      -- Strobe: assert to trigger flush timeout. Tie false if unused.
       vFlushTimeoutRequest        : in  boolean;
+
+      -- Strobe: assert for one ViClk cycle to flush all data then stop.
       vStopWithFlushRequestStrobe : in  boolean
 
     );
