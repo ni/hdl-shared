@@ -25,22 +25,15 @@ library ieee;
 library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommIntConfiguration.all;
+  use work.PkgNiDma.all;
 
 package PkgNiSharedFifo is
 
 
   -- Starting index where user HDL FIFOs are inserted into kDmaFifoConfArray.
---  constant kUserHdlDmaStartIndex : natural :=
---    kNumberOfDmaChannels - 1 - kNiFpgaFixedInputPorts - kNiFpgaFixedOutputPorts;
+  constant kUserHdlDmaStartIndex : natural :=
+    kNumberOfDmaChannels - 1 - kNiFpgaFixedInputPorts - kNiFpgaFixedOutputPorts;
 
-  -- *****************************************
-  -- RIO driver loading .lvbitx XML requires DMA indexes to start at 0 and be contiguous... or test example
-  -- uses two LV FPGA FIFOs at index 0 & 1 so this testing must start at index 3
-  --
-  -- WE WILL REMOVE THIS HACK ONCE WE DON'T HAVE TO USE .LVBITX TO LOAD THE RIO DRIVER FOR USER FIFOS
-  -- *****************************************
-  constant kUserHdlDmaStartIndex : natural := 3;
-  
   ---------------------------------------------------------------------------
   -- Simplified DMA FIFO configuration record
   ---------------------------------------------------------------------------
@@ -74,13 +67,31 @@ package PkgNiSharedFifo is
     StartIndex : natural
   ) return DmaChannelConfArray_t;
 
+  -- Build a kForceChannelEnable vector that marks every DMA channel occupied
+  -- by a user HDL FIFO. Channel mapping mirrors MergeDmaFifoConf:
+  --   UserConf(0) → channel StartIndex
+  --   UserConf(1) → channel StartIndex - 1
+  --   …
+  function GetForceChannelEnable(
+    UserConf   : UserDmaFifoConfArray_t;
+    StartIndex : natural
+  ) return NiDmaDmaChannelOneHot_t;
+
 end PkgNiSharedFifo;
 
 package body PkgNiSharedFifo is
 
   function DmaChannelBaseAddress(ChannelIndex : natural) return natural is
   begin
-    return 16#3FFC0# - ChannelIndex * 16#40#;
+    -- This is hard-coded to the lower half of the DMA register space for FlexRIO devices, which is where user HDL FIFOs are located. 
+    -- The user HDL FIFO register space is 0x37FFC down to 0x30000, with each channel occupying 0x40 bytes. 
+    -- The upper half of the DMA register space (0x3FFFC down to 0x38000) is reserved for LV FPGA FIFOs.
+    --
+    -- This will likely need to be updated to consider different target types that have different FIFO address ranges
+    --
+    -- Perhaps in the future this should be in the PkgLvFpgaConst or other package file generated from LV FPGA since it should be sourced
+    -- from the target resource XML.  But then we have a dependency between this file and generated LV packages which is also not ideal.
+    return 16#37FFC# - ChannelIndex * 16#40#;
   end function;
 
   function MergeDmaFifoConf(
@@ -107,6 +118,18 @@ package body PkgNiSharedFifo is
         DmaClkIsDefaultClk     => true,
         InterfaceIsHandshaking => false
       );
+    end loop;
+    return Result;
+  end function;
+
+  function GetForceChannelEnable(
+    UserConf   : UserDmaFifoConfArray_t;
+    StartIndex : natural
+  ) return NiDmaDmaChannelOneHot_t is
+    variable Result : NiDmaDmaChannelOneHot_t := (others => false);
+  begin
+    for i in UserConf'range loop
+      Result(StartIndex - i) := true;
     end loop;
     return Result;
   end function;
