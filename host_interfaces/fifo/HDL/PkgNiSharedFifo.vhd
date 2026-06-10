@@ -51,9 +51,10 @@ package PkgNiSharedFifo is
 
   type UserDmaFifoConfArray_t is array (natural range <>) of UserDmaFifoConf_t;
 
-  -- Compute the DMA register base address for a given system channel index.
-  -- Each channel occupies 0x40 bytes, starting from 0x3FFC0 at index 0.
-  function DmaChannelBaseAddress(ChannelIndex : natural) return natural;
+  -- Compute the DMA register base address for a given user FIFO config index.
+  -- Each FIFO occupies 0x40 bytes, starting from 0x37FFC at config index 0 and
+  -- stepping downward by 0x40 for each subsequent config index.
+  function DmaChannelBaseAddress(ConfigIndex : natural) return natural;
 
   -- Merge user FIFO configs into a base DmaChannelConfArray_t. The simplified
   -- UserConf entries are expanded to full DmaChannelConfiguration_t records
@@ -81,17 +82,21 @@ end PkgNiSharedFifo;
 
 package body PkgNiSharedFifo is
 
-  function DmaChannelBaseAddress(ChannelIndex : natural) return natural is
+  function DmaChannelBaseAddress(ConfigIndex : natural) return natural is
   begin
     -- This is hard-coded to the lower half of the DMA register space for FlexRIO devices, which is where user HDL FIFOs are located. 
-    -- The user HDL FIFO register space is 0x37FFC down to 0x30000, with each channel occupying 0x40 bytes. 
+    -- The user HDL FIFO register space is 0x37FFC down to 0x30000, with each FIFO occupying 0x40 bytes. 
     -- The upper half of the DMA register space (0x3FFFC down to 0x38000) is reserved for LV FPGA FIFOs.
+    --
+    -- Addressing is driven by the user FIFO config index (kUserHdlDmaFifoConf index), NOT the system
+    -- DMA channel index.  Config index 0 maps to 0x37FFC and each subsequent config index steps down
+    -- by 0x40, independent of which physical DMA channel the FIFO is assigned to.
     --
     -- This will likely need to be updated to consider different target types that have different FIFO address ranges
     --
     -- Perhaps in the future this should be in the PkgLvFpgaConst or other package file generated from LV FPGA since it should be sourced
     -- from the target resource XML.  But then we have a dependency between this file and generated LV packages which is also not ideal.
-    return 16#37FFC# - ChannelIndex * 16#40#;
+    return 16#37FFC# - ConfigIndex * 16#40#;
   end function;
 
   function MergeDmaFifoConf(
@@ -109,7 +114,7 @@ package body PkgNiSharedFifo is
         ElementsPerClockCycle  => UserConf(i).ElementsPerClockCycle,
         Mode                   => UserConf(i).Mode,
         SignedData             => UserConf(i).SignedData,
-        BaseAddress            => DmaChannelBaseAddress(StartIndex - i),
+        BaseAddress            => DmaChannelBaseAddress(i),
         SCL                    => false,
         CountSCL               => false,
         FxpType                => UserConf(i).FxpType,
