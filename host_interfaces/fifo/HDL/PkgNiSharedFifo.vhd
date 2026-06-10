@@ -89,8 +89,8 @@ package body PkgNiSharedFifo is
     --
     -- This will likely need to be updated to consider different target types that have different FIFO address ranges
     --
-    -- Perhaps in the future this should be in the PkgLvFpgaConst or other package file generated from LV FPGA since it should be sourced
-    -- from the target resource XML.  But then we have a dependency between this file and generated LV packages which is also not ideal.
+    -- Perhaps in the future this should be in the PkgCommIntConfiguration file generated from LV FPGA since it should be sourced
+    -- from the target resource XML.  
     return 16#37FFC# - ChannelIndex * 16#40#;
   end function;
 
