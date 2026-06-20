@@ -10,7 +10,7 @@ def pre_all(context):
     config.set_vivado_tcl_scripts_folder("../common/TCL")
 
     # --- Vivado Project Settings ---
-    config.set_top_level_entity("tb_NiSharedHostRegister")
+    config.set_vivado_top_entity("tb_NiSharedHostRegister")
     config.set_fpga_part("xcku040-ffva1156-2-e")
     config.set_vivado_project_folder("VivadoProject")
 

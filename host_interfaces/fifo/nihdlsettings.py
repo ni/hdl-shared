@@ -12,7 +12,7 @@ def pre_all(context):
     config.set_xilinx_sim_lib_folder("C:/dev/libraries/vivado/2021.1/modelsim_PE_2020")
 
     # --- Vivado Project Settings ---
-    config.set_top_level_entity("tb_all")
+    config.set_vivado_top_entity("tb_all")
     config.set_fpga_part("xcku040-ffva1156-2-e")
     config.set_vivado_project_folder("VivadoProject")
 
