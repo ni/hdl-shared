@@ -46,7 +46,6 @@ package PkgNiSharedFifo is
     ElementsPerClockCycle : natural;
     Mode                  : DmaChannelMode_t;
     SignedData            : boolean;
-    FxpType               : boolean;
   end record;
 
   type UserDmaFifoConfArray_t is array (natural range <>) of UserDmaFifoConf_t;
@@ -117,7 +116,7 @@ package body PkgNiSharedFifo is
         BaseAddress            => DmaChannelBaseAddress(i),
         SCL                    => false,
         CountSCL               => false,
-        FxpType                => UserConf(i).FxpType,
+        FxpType                => false,
         DisableOnFifoTimeout   => false,
         WriteWindowOffset      => 16#0#,
         DmaClkIsDefaultClk     => true,
