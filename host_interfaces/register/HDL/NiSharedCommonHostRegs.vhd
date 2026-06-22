@@ -44,6 +44,7 @@ library work;
   
 entity NiSharedCommonHostRegs is
   generic (
+    kMaxHdlRegOffset : natural;
     kSignature : std_logic_vector(31 downto 0);
     kVersion : std_logic_vector(31 downto 0);
     kOldestCompatibleVersion : std_logic_vector(31 downto 0)
@@ -73,6 +74,7 @@ begin
 
   SignatureReg: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kSignatureOffset,
       kDefault => kSignature,
       kReadOnly => true,
@@ -93,6 +95,7 @@ begin
 
   VersionReg: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kVersionOffset,
       kDefault => kVersion,
       kReadOnly => true,
@@ -113,6 +116,7 @@ begin
 
   OldestCompatibleVersionReg: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kOldestCompatibleVersionOffset,
       kDefault => kOldestCompatibleVersion,
       kReadOnly => true,
@@ -132,6 +136,7 @@ begin
 
   Scratch: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kScratchOffset,
       kDefault => x"00000000",
       kReadOnly => false,
