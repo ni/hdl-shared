@@ -48,6 +48,7 @@ library work;
   
 entity NiSharedHostRegisterArray is
   generic(
+    kMaxHdlRegOffset : natural;
     kNumRegisters : natural;
     kBaseAddress : natural;
     kDefault : Slv32Ary_t;
@@ -93,6 +94,7 @@ begin
   GenRegisters: for i in 0 to kNumRegisters-1 generate
     RegInst: entity work.NiSharedHostRegister
       generic map(
+        kMaxHdlRegOffset => kMaxHdlRegOffset,
         kOffset => kBaseAddress + (4 * i),
         kDefault => kDefault(i),
         kReadOnly => kReadOnly(i),

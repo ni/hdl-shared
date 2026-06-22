@@ -54,6 +54,7 @@ library work;
   
 entity NiSharedHostRegister is
   generic(
+    kMaxHdlRegOffset : natural;
     kOffset  : natural := 0;
     kDefault  : std_logic_vector(31 downto 0);
     kReadOnly : boolean := false;
@@ -84,6 +85,18 @@ architecture rtl of NiSharedHostRegister is
   signal bRegAddressedDly : boolean;  
   
 begin
+
+  -- Compile-time bound check: this register's byte offset must fit within the HDL
+  -- register space the LabVIEW FPGA target reserves (kMaxHdlRegOffset). Because the
+  -- check lives in the fundamental register block, every register the user drops --
+  -- bare, in an array, or via the common-regs block -- self-checks at elaboration in
+  -- both Vivado synthesis and ModelSim simulation, instead of silently colliding
+  -- with LabVIEW register space.
+  assert kOffset <= kMaxHdlRegOffset
+    report "NiSharedHostRegister kOffset (" & integer'image(kOffset)
+         & ") exceeds kMaxHdlRegOffset (" & integer'image(kMaxHdlRegOffset)
+         & "). Increase set_max_hdl_reg_offset in nihdlsettings.py or move the register."
+    severity failure;
 
   -- Address from RegPortIn is in 32 bit words so we need to multiply by 4 (shift left by 2) to get
   -- byte address and compare with our offset

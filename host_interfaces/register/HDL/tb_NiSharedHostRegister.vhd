@@ -34,6 +34,10 @@ architecture sim of tb_NiSharedHostRegister is
 
   -- Constants
   constant kClkPeriod : time := 10 ns;
+  -- Upper bound for register byte offsets exercised in this testbench. The shared
+  -- register blocks now take kMaxHdlRegOffset as a mandatory generic; pick a value
+  -- comfortably above every offset used below.
+  constant kMaxHdlRegOffset : natural := 16#1000#;
   -- Common host registers use fixed offsets: 0x00, 0x04, 0x08, 0x0C
   constant kCommonSignatureValue : std_logic_vector(31 downto 0) := x"5349474E";
   constant kCommonVersionValue : std_logic_vector(31 downto 0) := x"00010002";
@@ -102,6 +106,7 @@ begin
   -- DUT: Standard mode
   DUT_Standard: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kStandardOffset,
       kDefault => kDefaultValue,
       kReadOnly => false,
@@ -122,6 +127,7 @@ begin
   -- DUT: Host read-only mode
   DUT_ReadOnly: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kReadOnlyOffset,
       kDefault => kDefaultValue,
       kReadOnly => true,
@@ -142,6 +148,7 @@ begin
   -- DUT: FPGA Acknowledgment mode
   DUT_FpgaAck: entity work.NiSharedHostRegister
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kOffset => kFpgaAckOffset,
       kDefault => kDefaultValue,
       kReadOnly => false,
@@ -161,6 +168,7 @@ begin
 
   DUT_CommonHostRegs: entity work.NiSharedCommonHostRegs
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kSignature => kCommonSignatureValue,
       kVersion => kCommonVersionValue,
       kOldestCompatibleVersion => kCommonOldestCompatibleValue
@@ -174,6 +182,7 @@ begin
 
   DUT_Array: entity work.NiSharedHostRegisterArray
     generic map(
+      kMaxHdlRegOffset => kMaxHdlRegOffset,
       kNumRegisters => kArrayNumRegisters,
       kBaseAddress => kArrayBaseOffset,
       kDefault => kArrayDefaultValues,
