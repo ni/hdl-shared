@@ -26,13 +26,19 @@ library work;
   use work.PkgNiUtilities.all;
   use work.PkgCommIntConfiguration.all;
   use work.PkgNiDma.all;
+  use work.PkgNiHdlSettings.all;
 
 package PkgNiSharedFifo is
 
 
   -- Starting index where user HDL FIFOs are inserted into kDmaFifoConfArray.
+  -- The fixed (non-user) logic consumes kNumFixedLogicDmaStreams DMA streams at
+  -- the top of the channel range; user HDL FIFOs occupy the channels just below
+  -- them. Note that kNumFixedLogicDmaStreams counts DMA *streams* used by the
+  -- fixed logic and is distinct from kNiFpgaFixedInputPorts /
+  -- kNiFpgaFixedOutputPorts, which count DMA *interfaces*.
   constant kUserHdlDmaStartIndex : natural :=
-    kNumberOfDmaChannels - 1 - kNiFpgaFixedInputPorts - kNiFpgaFixedOutputPorts;
+    kNumberOfDmaChannels - 1 - kNumFixedLogicDmaStreams;
 
   ---------------------------------------------------------------------------
   -- Simplified DMA FIFO configuration record
