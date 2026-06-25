@@ -28,6 +28,7 @@ Note: If you are doing a pre-release development release, you should skip making
 Make the release:
 - Name: 1.0.0
 - Tag: 1.0.0
+- Target: releases/1.0.0
 
 Note: If you are doing a development release, name it 1.0.0.dev0 and set the "Pre-release" label
 
