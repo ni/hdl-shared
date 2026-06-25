@@ -248,7 +248,10 @@ begin
       bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
       bRegPortIn.Rd <= true;
       wait until rising_edge(BusClk);
-      wait for 0 ns;
+      -- The common-regs block ORs the sub-registers' registered DataValid through an
+      -- extra combinational layer (CombineOutputs), so sample mid-cycle once it has
+      -- settled rather than on the same delta as a direct register read.
+      wait for kClkPeriod / 4;
       data := bRegPortOut_Common.Data;
       valid := bRegPortOut_Common.DataValid;
       bRegPortIn.Rd <= false;
@@ -265,12 +268,32 @@ begin
       bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
       bRegPortIn.Rd <= true;
       wait until rising_edge(BusClk);
-      wait for 0 ns;
+      -- The array block ORs each element's registered DataValid through an extra
+      -- combinational layer, so sample mid-cycle once it has settled rather than on
+      -- the same delta as a direct register read.
+      wait for kClkPeriod / 4;
       data := bRegPortOut_Array.Data;
       valid := bRegPortOut_Array.DataValid;
       bRegPortIn.Rd <= false;
       wait until rising_edge(BusClk);
     end procedure HostReadArray;
+
+    -- Helper procedure for host read from read-only register DUT output
+    procedure HostReadReadOnly(
+      constant addr : in natural;
+      variable data : out std_logic_vector(31 downto 0);
+      variable valid : out boolean
+    ) is
+    begin
+      bRegPortIn.Address <= to_unsigned(addr / 4, bRegPortIn.Address'length);
+      bRegPortIn.Rd <= true;
+      wait until rising_edge(BusClk);
+      wait for 0 ns;
+      data := bRegPortOut_ReadOnly.Data;
+      valid := bRegPortOut_ReadOnly.DataValid;
+      bRegPortIn.Rd <= false;
+      wait until rising_edge(BusClk);
+    end procedure HostReadReadOnly;
 
     -- Helper procedure for FPGA write
     procedure FpgaWrite(
@@ -396,7 +419,7 @@ begin
       report "FAIL: Host write should be ignored in read-only mode. Got: " & to_hstring(to_bitvector(bFpgaDataOut_ReadOnly)) 
       severity error;
     -- Verify we can read the value from the read-only register
-    HostRead(kReadOnlyOffset, vReadData, vReadValid);
+    HostReadReadOnly(kReadOnlyOffset, vReadData, vReadValid);
     assert vReadValid report "FAIL: Read valid should be true for read-only register" severity error;
     assert vReadData = x"FEDCBA98" 
       report "FAIL: Host read from read-only register failed. Expected: FEDCBA98 Got: " & to_hstring(to_bitvector(vReadData)) 
