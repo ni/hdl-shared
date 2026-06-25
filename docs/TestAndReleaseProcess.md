@@ -23,7 +23,7 @@ Create a release branch:
 - Name: releases/1.0.0
 - Source branch: main
 
-Note: If you are doing a pre-release development release, you should skip making the release branch
+Note: If you are doing a development release, you should skip making the release branch
 
 Make the release:
 - Name: 1.0.0
