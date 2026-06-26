@@ -173,5 +173,26 @@ begin
 
   -- Data is always available on the FPGA side when requested
   bFpgaDataOut <= bRegData;
-  
+
+  -- synthesis translate_off
+  -- Simulation-only protocol monitor. Continuously asserts that both sides honor
+  -- the RegPort contract: the master driving bRegPortIn (mutually exclusive
+  -- Rd/Wt, known address/data) and this block's own slave response on
+  -- bRegPortOut (zero data when not valid so outputs OR-combine, monotonic
+  -- Ready, known read data). It is passive and fenced out of synthesis. This
+  -- both self-checks the reference register and models the check a user should
+  -- keep if they lift the RegPort state machine into their own logic.
+  RegPortProtocolCheck : entity work.RegPortProtocolChecker
+    generic map (
+      kName => "NiSharedHostRegister"
+    )
+    port map (
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOut,
+      ViolationCount => open
+    );
+  -- synthesis translate_on
+
 end rtl;

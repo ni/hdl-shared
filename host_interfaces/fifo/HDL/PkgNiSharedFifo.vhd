@@ -35,17 +35,51 @@ package PkgNiSharedFifo is
     kNumberOfDmaChannels - 1 - kNiFpgaFixedInputPorts - kNiFpgaFixedOutputPorts;
 
   ---------------------------------------------------------------------------
+  -- Supported host API data types for DMA FIFOs
+  ---------------------------------------------------------------------------
+  -- These are the ONLY data types the host (RIO) API supports for DMA FIFOs.
+  -- Selecting one of these in a UserDmaFifoConf_t entry automatically sets the
+  -- correct FifoWidth and SignedData when MergeDmaFifoConf expands it, so the
+  -- user never specifies width or signedness directly.
+  --
+  --   Constant      Host type   Width  Signed
+  --   -----------   ---------   -----  ------
+  --   kBoolean      Boolean       8    no     (Boolean maps to U8 on the host)
+  --   kUnsigned8    U8            8    no
+  --   kInteger8     I8            8    yes
+  --   kUnsigned16   U16          16    no
+  --   kInteger16    I16          16    yes
+  --   kUnsigned32   U32          32    no
+  --   kInteger32    I32          32    yes
+  --   kUnsigned64   U64          64    no
+  --   kInteger64    I64          64    yes
+  --   kSingle       SGL          64    no     (single-precision floating point)
+  type FifoDataType_t is (
+    kBoolean,
+    kUnsigned8,  kInteger8,
+    kUnsigned16, kInteger16,
+    kUnsigned32, kInteger32,
+    kUnsigned64, kInteger64,
+    kSingle
+  );
+
+  -- Return the DMA FIFO element width (in bits) for a host data type.
+  function FifoDataWidth(DataType : FifoDataType_t) return natural;
+
+  -- Return true if the host data type is signed (enables sign extension).
+  function FifoDataIsSigned(DataType : FifoDataType_t) return boolean;
+
+  ---------------------------------------------------------------------------
   -- Simplified DMA FIFO configuration record
   ---------------------------------------------------------------------------
-  -- Users specify only these fields per FIFO channel. The remaining
-  -- DmaChannelConfiguration_t fields are filled in with defaults by
-  -- MergeDmaFifoConf.
+  -- Users specify only these fields per FIFO channel. Width and signedness are
+  -- derived from DataType, and the remaining DmaChannelConfiguration_t fields
+  -- are filled in with defaults by MergeDmaFifoConf.
   type UserDmaFifoConf_t is record
     FifoDepth             : natural;
-    FifoWidth             : natural;
+    DataType              : FifoDataType_t;
     ElementsPerClockCycle : natural;
     Mode                  : DmaChannelMode_t;
-    SignedData            : boolean;
   end record;
 
   type UserDmaFifoConfArray_t is array (natural range <>) of UserDmaFifoConf_t;
@@ -81,6 +115,27 @@ end PkgNiSharedFifo;
 
 package body PkgNiSharedFifo is
 
+  function FifoDataWidth(DataType : FifoDataType_t) return natural is
+  begin
+    case DataType is
+      when kBoolean                  => return 8;   -- Boolean maps to U8
+      when kUnsigned8  | kInteger8   => return 8;
+      when kUnsigned16 | kInteger16  => return 16;
+      when kUnsigned32 | kInteger32  => return 32;
+      when kUnsigned64 | kInteger64  => return 64;
+      when kSingle                   => return 64;  -- SGL: 64-bit element
+    end case;
+  end function;
+
+  function FifoDataIsSigned(DataType : FifoDataType_t) return boolean is
+  begin
+    case DataType is
+      when kInteger8  | kInteger16 |
+           kInteger32 | kInteger64 => return true;
+      when others                  => return false;
+    end case;
+  end function;
+
   function DmaChannelBaseAddress(ConfigIndex : natural) return natural is
   begin
     -- This is hard-coded to the lower half of the DMA register space for FlexRIO devices, which is where user HDL FIFOs are located. 
@@ -109,10 +164,10 @@ package body PkgNiSharedFifo is
     for i in UserConf'range loop
       Result(StartIndex - i) := (
         FifoDepth              => UserConf(i).FifoDepth,
-        FifoWidth              => UserConf(i).FifoWidth,
+        FifoWidth              => FifoDataWidth(UserConf(i).DataType),
         ElementsPerClockCycle  => UserConf(i).ElementsPerClockCycle,
         Mode                   => UserConf(i).Mode,
-        SignedData             => UserConf(i).SignedData,
+        SignedData             => FifoDataIsSigned(UserConf(i).DataType),
         BaseAddress            => DmaChannelBaseAddress(i),
         SCL                    => false,
         CountSCL               => false,

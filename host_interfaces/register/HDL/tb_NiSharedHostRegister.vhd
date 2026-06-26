@@ -98,6 +98,9 @@ architecture sim of tb_NiSharedHostRegister is
   signal TestDone : boolean := false;
   signal CurrentTest : natural := 0;  -- Indicates which test is currently running
 
+  -- Protocol-checker violation counter (see RegPortProtocolChecker below)
+  signal RegPortViolations : natural := 0;
+
 begin
 
   -- Clock generation
@@ -122,6 +125,21 @@ begin
       bFpgaWrite     => bFpgaWrite,
       bFpgaDataIn    => bFpgaDataIn,
       bFpgaDataOut   => bFpgaDataOut
+    );
+
+  -- Passive RegPort protocol monitor on the standard DUT. It only observes the
+  -- shared RegPort master signals and this DUT's RegPort slave response, and
+  -- asserts if either side violates the RegPort contract. It never drives the bus.
+  RegPortCheck: entity work.RegPortProtocolChecker
+    generic map(
+      kName => "tb_NiSharedHostRegister.DUT_Standard"
+    )
+    port map(
+      BusClk         => BusClk,
+      aReset         => aReset,
+      bRegPortIn     => bRegPortIn,
+      bRegPortOut    => bRegPortOut,
+      ViolationCount => RegPortViolations
     );
 
   -- DUT: Host read-only mode
@@ -563,6 +581,9 @@ begin
     wait for kClkPeriod * 2;
 
     report "==== All tests completed ====";
+    assert RegPortViolations = 0
+      report "FAIL: RegPort protocol violations detected on DUT_Standard"
+      severity error;
     TestDone <= true;
     wait;
   end process Stimulus;

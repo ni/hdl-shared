@@ -89,7 +89,7 @@ The Ready signal has subtle but important behavioral requirements:
 
 1. **Address-Based**: Ready must be driven as a function of Address and no later than one cycle after Address changes.
 
-2. **Monotonic**: Once Ready asserts, it must stay asserted as long as Address doesn't change.
+2. **Monotonic (once settled)**: Once Ready has settled for a stable Address, it must stay asserted as long as that Address doesn't change. Because of rule 1, Ready may still change on the single settling cycle right after an Address change — so a slave may legally de-assert Ready on that cycle to insert wait states (e.g. `NiSharedHostRegister` with `kUseFpgaAck=true` drops Ready when newly addressed and holds it low until `bFpgaAck`). Monotonicity is enforced only after that settling cycle.
 
 
 ### Master Behavior Variations
@@ -111,7 +111,7 @@ There are two types of RegPort masters in the ecosystem:
 To be compatible with both master types, slaves must:
 
 1. Drive Ready based on Address within one cycle
-2. Keep Ready monotonic (no toggling once asserted)
+2. Keep Ready monotonic once it has settled for a stable Address (a slave may de-assert Ready on the settling cycle after an Address change to insert wait states, then hold it low until ready — but must not toggle Ready afterward while the Address is stable)
 3. If not ready, latch any Rd/Wt strobe until it can be processed
 4. Note: Address and Data are held by the master during the entire transaction, so only the strobe needs latching
 
@@ -172,4 +172,4 @@ bFpgaAck:       false  false  false  true   false  false
 
 ## Example
 
-The `NiHostRegister` implementation demonstrates all these principles with both basic (always-ready) and advanced (acknowledged) operating modes.
+The `NiSharedHostRegister` implementation demonstrates all these principles with both basic (always-ready) and advanced (acknowledged) operating modes.

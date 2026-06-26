@@ -23,10 +23,10 @@ Edit `PkgUserHdl.vhd` to declare your FIFO channels using `UserDmaFifoConf_t`:
 constant kNumUserHdlDmaChannels : natural := 2;
 
 constant kUserHdlDmaFifoConf : UserDmaFifoConfArray_t(0 to kNumUserHdlDmaChannels - 1) := (
-  0 => (FifoDepth => 1029, FifoWidth => 32, ElementsPerClockCycle => 1,
-        Mode => NiFpgaHostToTarget, SignedData => true, FxpType => false),
-  1 => (FifoDepth => 1023, FifoWidth => 32, ElementsPerClockCycle => 1,
-        Mode => NiFpgaTargetToHost, SignedData => true, FxpType => false)
+  0 => (FifoDepth => 1029, DataType => kInteger32, ElementsPerClockCycle => 1,
+        Mode => NiFpgaHostToTarget),
+  1 => (FifoDepth => 1023, DataType => kInteger32, ElementsPerClockCycle => 1,
+        Mode => NiFpgaTargetToHost)
 );
 ```
 
@@ -35,11 +35,27 @@ constant kUserHdlDmaFifoConf : UserDmaFifoConfArray_t(0 to kNumUserHdlDmaChannel
 | Field | Type | Description |
 |-------|------|-------------|
 | `FifoDepth` | natural | Number of elements the FIFO can hold. See depth sizing rules below. |
-| `FifoWidth` | natural | Bit width of a single data element (1–64). |
+| `DataType` | FifoDataType_t | Host data type. The element width and signedness are derived automatically (see table below). |
 | `ElementsPerClockCycle` | natural | Elements transferred per clock. Valid: 1, 2, 4, 8, 16, 32, 64. |
 | `Mode` | DmaChannelMode_t | `NiFpgaHostToTarget` (Reader) or `NiFpgaTargetToHost` (Writer). |
-| `SignedData` | boolean | `true` if the host data type is signed (enables sign extension in Writer). |
-| `FxpType` | boolean | `true` if the host data type is fixed-point. |
+
+### Supported Data Types
+
+These are the only data types the host API supports for DMA FIFOs. Selecting one
+sets the FIFO width and signedness automatically — you never specify them directly.
+
+| `DataType` | Host type | Width | Signed |
+|------------|-----------|-------|--------|
+| `kBoolean` | Boolean | 8 | no (maps to U8) |
+| `kUnsigned8` | U8 | 8 | no |
+| `kInteger8` | I8 | 8 | yes |
+| `kUnsigned16` | U16 | 16 | no |
+| `kInteger16` | I16 | 16 | yes |
+| `kUnsigned32` | U32 | 32 | no |
+| `kInteger32` | I32 | 32 | yes |
+| `kUnsigned64` | U64 | 64 | no |
+| `kInteger64` | I64 | 64 | yes |
+| `kSingle` | SGL | 64 | no (single-precision float) |
 
 ### FIFO Depth Rules
 
@@ -95,10 +111,10 @@ The Writer FIFO accepts data from your HDL logic and transfers it to the host vi
 WriterFifo_inst : entity work.NiSharedFifoWriter
   generic map(
     kFifoDepth            => kUserHdlDmaFifoConf(1).FifoDepth,
-    kSampleWidth          => kUserHdlDmaFifoConf(1).FifoWidth,
+    kSampleWidth          => FifoDataWidth(kUserHdlDmaFifoConf(1).DataType),
     kNumOfSamplesPerWrite => kUserHdlDmaFifoConf(1).ElementsPerClockCycle,
-    kSignExtend           => kUserHdlDmaFifoConf(1).SignedData,
-    kFxpType              => kUserHdlDmaFifoConf(1).FxpType,
+    kSignExtend           => FifoDataIsSigned(kUserHdlDmaFifoConf(1).DataType),
+    kFxpType              => false,
     kPeerToPeer           => false,
     kDisableOnFifoTimeout => false
   )
@@ -132,10 +148,10 @@ dWriterOutputStreamInterfaceFromFifo <= kOutputStreamInterfaceFromFifoZero;
 | Generic | Source | Description |
 |---------|--------|-------------|
 | `kFifoDepth` | `UserDmaFifoConf.FifoDepth` | FIFO depth (`2^N - 1`) |
-| `kSampleWidth` | `UserDmaFifoConf.FifoWidth` | Bit width of one element |
+| `kSampleWidth` | `FifoDataWidth(UserDmaFifoConf.DataType)` | Bit width of one element |
 | `kNumOfSamplesPerWrite` | `UserDmaFifoConf.ElementsPerClockCycle` | Elements per write |
-| `kSignExtend` | `UserDmaFifoConf.SignedData` | Sign-extend data before host transfer |
-| `kFxpType` | `UserDmaFifoConf.FxpType` | Fixed-point data type flag |
+| `kSignExtend` | `FifoDataIsSigned(UserDmaFifoConf.DataType)` | Sign-extend data before host transfer |
+| `kFxpType` | — | Fixed-point data type flag (tie `false`) |
 | `kPeerToPeer` | — | `true` for peer-to-peer source stream |
 | `kDisableOnFifoTimeout` | — | `true` to auto-disable on overflow |
 
@@ -146,7 +162,7 @@ dWriterOutputStreamInterfaceFromFifo <= kOutputStreamInterfaceFromFifoZero;
 | `ViClk` | in | `std_logic` | User logic clock |
 | `vDataIn` | in | `std_logic_vector(kSampleWidth*kNumOfSamplesPerWrite-1 downto 0)` | Data to write into FIFO |
 | `vFull` | out | `boolean` | FIFO is full; do not write |
-| `vWriteFifo` | in | `boolean` | Write strobe — assert for one ViClk cycle to push data |
+| `vWriteFifo` | in | `boolean` | Write enable — assert together with `vInputValid` to push a sample; may be held to write continuously |
 | `vFlush` | in | `boolean` | Flush partial data to host (tie `false` if unused) |
 | `vCtCount` | out | `unsigned(31 downto 0)` | Current number of elements in FIFO |
 | `vInputValid` | in | `boolean` | Handshaking: data on `vDataIn` is valid |
@@ -177,9 +193,9 @@ The Reader FIFO receives data from the host via DMA and makes it available to yo
 ReaderFifo_inst : entity work.NiSharedFifoReader
   generic map(
     kFifoDepth            => kUserHdlDmaFifoConf(0).FifoDepth,
-    kSampleWidth          => kUserHdlDmaFifoConf(0).FifoWidth,
+    kSampleWidth          => FifoDataWidth(kUserHdlDmaFifoConf(0).DataType),
     kNumOfSamplesPerRead  => kUserHdlDmaFifoConf(0).ElementsPerClockCycle,
-    kFxpType              => kUserHdlDmaFifoConf(0).FxpType,
+    kFxpType              => false,
     kPeerToPeer           => false,
     kDisableOnFifoTimeout => false
   )
@@ -210,9 +226,9 @@ dReaderInputStreamInterfaceFromFifo <= kInputStreamInterfaceFromFifoZero;
 | Generic | Source | Description |
 |---------|--------|-------------|
 | `kFifoDepth` | `UserDmaFifoConf.FifoDepth` | FIFO depth (`(2^N + 6*EPC) - 1`) |
-| `kSampleWidth` | `UserDmaFifoConf.FifoWidth` | Bit width of one element |
+| `kSampleWidth` | `FifoDataWidth(UserDmaFifoConf.DataType)` | Bit width of one element |
 | `kNumOfSamplesPerRead` | `UserDmaFifoConf.ElementsPerClockCycle` | Elements per read |
-| `kFxpType` | `UserDmaFifoConf.FxpType` | Fixed-point data type flag |
+| `kFxpType` | — | Fixed-point data type flag (tie `false`) |
 | `kPeerToPeer` | — | `true` for peer-to-peer sink stream |
 | `kDisableOnFifoTimeout` | — | `true` to auto-disable on underflow |
 
@@ -223,7 +239,7 @@ dReaderInputStreamInterfaceFromFifo <= kInputStreamInterfaceFromFifoZero;
 | `ViClk` | in | `std_logic` | User logic clock |
 | `vDataOut` | out | `std_logic_vector(kSampleWidth*kNumOfSamplesPerRead-1 downto 0)` | Data read from FIFO |
 | `vEmpty` | out | `boolean` | FIFO is empty; no data available |
-| `vReadFifo` | in | `boolean` | Read strobe — assert for one ViClk cycle to pop data |
+| `vReadFifo` | in | `boolean` | Read enable — assert to request data; may be held to stream continuously. Wait for `vOutputValid` before capturing `vDataOut` |
 | `vCtCount` | out | `unsigned(31 downto 0)` | Current number of elements in FIFO |
 | `vOutputValid` | out | `boolean` | Handshaking: data on `vDataOut` is valid |
 | `vReadyForOutput` | in | `boolean` | Handshaking: user is ready to accept data (tie `true` if always ready) |
@@ -322,10 +338,10 @@ end process WriteLogic;
 
 ### Key Rules for Writing
 
-1. Check `vFull` before writing — do not assert `vWriteFifo` when the FIFO is full.
-2. Assert `vWriteFifo` and `vInputValid` simultaneously for exactly one `ViClk` cycle per write.
-3. `vDataIn` must be stable when `vWriteFifo` is asserted.
-4. The stream must be in the Enabled state for writes to succeed.
+1. Do not present a sample (`vWriteFifo` + `vInputValid`) when `vFull = true` — the sample is dropped (overflow). Check `vFull` (or use `vReadyForInput` handshaking) first.
+2. A sample is pushed on every `ViClk` cycle where both `vWriteFifo` and `vInputValid` are asserted. `vWriteFifo` is an enable and may be held across multiple cycles.
+3. `vDataIn` must be stable on each cycle a sample is presented.
+4. Writes are buffered regardless of stream state; the data drains to the host once the stream reaches Enabled. There is no need to gate writes on the stream state.
 
 ---
 
@@ -353,11 +369,11 @@ end process ReadLogic;
 
 ### Key Rules for Reading
 
-1. Check `vEmpty` before reading — do not assert `vReadFifo` when the FIFO is empty.
-2. Assert `vReadFifo` for exactly one `ViClk` cycle per read.
-3. Data appears on `vDataOut` with `vOutputValid` asserted one or more cycles after the read strobe.
-4. If using handshaking, assert `vReadyForOutput` when you can accept data. Tie to `true` if always ready.
-5. The stream must be in the Enabled state for reads to succeed.
+1. Asserting `vReadFifo` while `vEmpty = true` is harmless — the pop is gated internally, so no data is lost. The common idiom is to assert `vReadFifo` and wait for `vOutputValid`.
+2. `vReadFifo` is a read *enable*: pulse it for a single read or hold it asserted to stream continuously.
+3. Data appears on `vDataOut` with `vOutputValid` asserted one or more cycles after the read request. Capture `vDataOut` only when `vOutputValid = true`.
+4. If using handshaking, assert `vReadyForOutput` when you can accept data. Tie to `true` if always ready. Asserting `vReadyForOutput` while `vEmpty` flags an underflow (disables the stream when `kDisableOnFifoTimeout`).
+5. Data only emerges (`vOutputValid`) while the stream is Enabled; you do not need to gate `vReadFifo` on the stream state.
 
 ---
 
@@ -400,13 +416,13 @@ The `UserHdl.vhd` reference design demonstrates a complete implementation where 
 
 ## Checklist
 
-- [ ] Define `kUserHdlDmaFifoConf` in `PkgUserHdl.vhd` with correct Mode, Depth, and Width
+- [ ] Define `kUserHdlDmaFifoConf` in `PkgUserHdl.vhd` with correct Mode, Depth, and DataType
 - [ ] Verify depth follows sizing rules (Reader adds `6 × ElementsPerClockCycle`)
 - [ ] Instantiate `NiSharedFifoWriter` for each TargetToHost channel
 - [ ] Instantiate `NiSharedFifoReader` for each HostToTarget channel
 - [ ] Connect stream interfaces from entity ports to FIFO instances
 - [ ] Drive unused stream direction outputs to zero constants
 - [ ] Implement start/stop control logic (one-cycle pulses)
-- [ ] Check `vFull`/`vEmpty` before writing/reading
+- [ ] Check `vFull` before presenting a sample (writing while full drops it); wait for `vOutputValid` when reading
 - [ ] Connect `BusClk` port to `DmaClk` (not the user logic clock)
 - [ ] Connect `ViClk` port to your user logic clock

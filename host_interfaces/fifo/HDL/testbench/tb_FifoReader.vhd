@@ -139,6 +139,9 @@ architecture test of tb_FifoReader is
 
   signal StopSim : boolean := false;
 
+  -- Protocol-checker violation counter (see NiSharedFifoReaderChecker below)
+  signal ReaderViolations : natural := 0;
+
   subtype TestStatusString_t is string(1 to 40);
   signal TestStatus : TestStatusString_t := (others => ' ');
 
@@ -195,6 +198,29 @@ begin
       vStartStreamRequest          => vStartStreamRequest,
       vStopRequestStrobe           => vStopRequestStrobe,
       bIrq                         => bIrq);
+
+
+  ---------------------------------------------------------------------------
+  -- Passive reader-interface protocol monitor. It only observes the user-side
+  -- (ViClk-domain) signals and asserts if the reader contract documented in
+  -- fifo/docs/interface-descriptions.md is violated. It never drives any signal.
+  ---------------------------------------------------------------------------
+  ReaderCheck: entity work.NiSharedFifoReaderChecker
+    generic map (
+      kName        => "tb_FifoReader.DUT",
+      kSampleWidth => vDataOut'length)
+    port map (
+      ViClk               => ViClk,
+      aReset              => aDiagramReset,
+      vEmpty              => vEmpty,
+      vReadFifo           => vReadFifo,
+      vOutputValid        => vOutputValid,
+      vReadyForOutput     => vReadyForOutput,
+      vDataOut            => vDataOut,
+      vStreamStateOut     => vStreamStateOut,
+      vStartStreamRequest => vStartStreamRequest,
+      vStopRequestStrobe  => vStopRequestStrobe,
+      ViolationCount      => ReaderViolations);
 
 
   ---------------------------------------------------------------------------
@@ -1246,6 +1272,9 @@ begin
     -----------------------------------------------------------------------
     SetTestStatus("ALL TESTS PASSED");
     report "ALL TESTS PASSED" severity note;
+    assert ReaderViolations = 0
+      report "FAIL: FIFO reader protocol violations detected"
+      severity error;
     StopSim <= true;
     wait;
 

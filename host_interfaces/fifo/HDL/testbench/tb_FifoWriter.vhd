@@ -144,6 +144,9 @@ architecture test of tb_FifoWriter is
 
   signal StopSim : boolean := false;
 
+  -- Protocol-checker violation counter (see NiSharedFifoWriterChecker below)
+  signal WriterViolations : natural := 0;
+
   subtype TestStatusString_t is string(1 to 40);
   signal TestStatus : TestStatusString_t := (others => ' ');
 
@@ -203,6 +206,30 @@ begin
       vFlushTimeoutRequest        => vFlushTimeoutRequest,
       vStopWithFlushRequestStrobe => vStopWithFlushRequestStrobe,
       bIrq                        => bIrq);
+
+
+  ---------------------------------------------------------------------------
+  -- Passive writer-interface protocol monitor. It only observes the user-side
+  -- (ViClk-domain) signals driven into the FIFO and asserts if the writer
+  -- contract documented in fifo/docs/interface-descriptions.md is violated. It
+  -- never drives any signal.
+  ---------------------------------------------------------------------------
+  WriterCheck: entity work.NiSharedFifoWriterChecker
+    generic map (
+      kName        => "tb_FifoWriter.DUT",
+      kSampleWidth => vDataIn'length)
+    port map (
+      ViClk                       => ViClk,
+      aReset                      => aDiagramReset,
+      vFull                       => vFull,
+      vWriteFifo                  => vWriteFifo,
+      vInputValid                 => vInputValid,
+      vDataIn                     => vDataIn,
+      vStreamStateOut             => vStreamStateOut,
+      vStartStreamRequest         => vStartStreamRequest,
+      vStopRequestStrobe          => vStopRequestStrobe,
+      vStopWithFlushRequestStrobe => vStopWithFlushRequestStrobe,
+      ViolationCount              => WriterViolations);
 
 
   ---------------------------------------------------------------------------
@@ -1418,6 +1445,9 @@ begin
     -----------------------------------------------------------------------
     SetTestStatus("ALL TESTS PASSED");
     report "ALL TESTS PASSED" severity note;
+    assert WriterViolations = 0
+      report "FAIL: FIFO writer protocol violations detected"
+      severity error;
     StopSim <= true;
     wait;
 

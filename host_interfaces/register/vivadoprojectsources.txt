@@ -1,4 +1,5 @@
 HDL/NiSharedHostRegister.vhd
 HDL/NiSharedHostRegisterArray.vhd
 HDL/NiSharedCommonHostRegs.vhd
+HDL/verification/RegPortProtocolChecker.vhd
 HDL/tb_NiSharedHostRegister.vhd

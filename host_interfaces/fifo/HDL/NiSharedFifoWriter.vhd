@@ -164,4 +164,31 @@ begin
       vFlushTimeoutRequest          => vFlushTimeoutRequest,
       vStopWithFlushRequestStrobe   => vStopWithFlushRequestStrobe);
 
+  -- synthesis translate_off
+  -- Simulation-only protocol monitor. Continuously asserts that the user logic
+  -- hooked up to this Writer honors the FIFO write contract (no write while
+  -- full, known data on write cycles, one stream request per cycle). It is
+  -- passive (reads the user-side ports only) and is fenced out of synthesis, so
+  -- every consumer that instantiates NiSharedFifoWriter gets the check for free
+  -- in simulation at zero hardware cost.
+  WriterProtocolCheck : entity work.NiSharedFifoWriterChecker
+    generic map (
+      kName        => "NiSharedFifoWriter",
+      kSampleWidth => kSampleWidth*kNumOfSamplesPerWrite
+    )
+    port map (
+      ViClk                       => ViClk,
+      aReset                      => aDiagramReset or aBusReset,
+      vFull                       => vFull,
+      vWriteFifo                  => vWriteFifo,
+      vInputValid                 => vInputValid,
+      vDataIn                     => vDataIn,
+      vStreamStateOut             => vStreamStateOut,
+      vStartStreamRequest         => vStartStreamRequest,
+      vStopRequestStrobe          => vStopRequestStrobe,
+      vStopWithFlushRequestStrobe => vStopWithFlushRequestStrobe,
+      ViolationCount              => open
+    );
+  -- synthesis translate_on
+
 end structure;

@@ -150,4 +150,31 @@ begin
       vStartStreamRequest            => vStartStreamRequest,
       vStopRequestStrobe             => vStopRequestStrobe);
 
+  -- synthesis translate_off
+  -- Simulation-only protocol monitor. Continuously asserts that the user logic
+  -- hooked up to this Reader honors the FIFO read contract (data only emerges
+  -- while Enabled, known data on valid cycles, one stream request per cycle). It
+  -- is passive (reads the user-side ports only) and is fenced out of synthesis,
+  -- so every consumer that instantiates NiSharedFifoReader gets the check for
+  -- free in simulation at zero hardware cost.
+  ReaderProtocolCheck : entity work.NiSharedFifoReaderChecker
+    generic map (
+      kName        => "NiSharedFifoReader",
+      kSampleWidth => kSampleWidth*kNumOfSamplesPerRead
+    )
+    port map (
+      ViClk               => ViClk,
+      aReset              => aDiagramReset or aBusReset,
+      vEmpty              => vEmpty,
+      vReadFifo           => vReadFifo,
+      vOutputValid        => vOutputValid,
+      vReadyForOutput     => vReadyForOutput,
+      vDataOut            => vDataOut,
+      vStreamStateOut     => vStreamStateOut,
+      vStartStreamRequest => vStartStreamRequest,
+      vStopRequestStrobe  => vStopRequestStrobe,
+      ViolationCount      => open
+    );
+  -- synthesis translate_on
+
 end structure;

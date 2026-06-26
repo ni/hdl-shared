@@ -57,12 +57,18 @@ Users define their FIFOs using the simplified `UserDmaFifoConf_t` record in `Pkg
 
 ```vhdl
 constant kUserHdlDmaFifoConf : UserDmaFifoConfArray_t(0 to kNumUserHdlDmaChannels - 1) := (
-  0 => (FifoDepth => 1029, FifoWidth => 32, ElementsPerClockCycle => 1,
-        Mode => NiFpgaHostToTarget, SignedData => true, FxpType => false),
-  1 => (FifoDepth => 1023, FifoWidth => 32, ElementsPerClockCycle => 1,
-        Mode => NiFpgaTargetToHost, SignedData => true, FxpType => false)
+  0 => (FifoDepth => 1029, DataType => kInteger32, ElementsPerClockCycle => 1,
+        Mode => NiFpgaHostToTarget),
+  1 => (FifoDepth => 1023, DataType => kInteger32, ElementsPerClockCycle => 1,
+        Mode => NiFpgaTargetToHost)
 );
 ```
+
+The `DataType` field is a `FifoDataType_t` value (defined in `PkgNiSharedFifo`) that
+captures both the element width and signedness in one enum — for example `kInteger32`,
+`kUnsigned16`, `kBoolean`, or `kSingle`. The helper functions `FifoDataWidth(DataType)` and
+`FifoDataIsSigned(DataType)` derive the bit width and sign behavior from it, so you no
+longer specify width and signedness separately.
 
 The `MergeDmaFifoConf` function in `PkgNiSharedFifo` expands these simplified entries into full `DmaChannelConfiguration_t` records and merges them into the system array starting at `kUserHdlDmaStartIndex` (currently index 3, growing downward).
 
@@ -152,9 +158,9 @@ For fixed-point data types, round up to the nearest standard width (16/32/64) an
 
 ## Data Width and Packing
 
-- `FifoWidth` (mapped to `kSampleWidth` generic) specifies the width of a single data element in bits (1–64).
+- `DataType` (a `FifoDataType_t` enum) determines the width and signedness of a single data element. `FifoDataWidth(DataType)` maps it to the `kSampleWidth` generic (8–64 bits) and `FifoDataIsSigned(DataType)` maps it to the `kSignExtend` generic.
 - `ElementsPerClockCycle` (mapped to `kNumOfSamplesPerRead`/`kNumOfSamplesPerWrite`) specifies how many elements are transferred per clock cycle. Valid values: 1, 2, 4, 8, 16, 32, or 64.
-- The total user data port width is `FifoWidth × ElementsPerClockCycle` bits.
+- The total user data port width is `FifoDataWidth(DataType) × ElementsPerClockCycle` bits.
 
 ## DMA Channel Modes
 
