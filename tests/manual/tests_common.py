@@ -215,6 +215,7 @@ def run_test(
 
         command = [
             nihdl_cmd,
+            "--verbose",
             *test.subcommand,
             f"--config={WRAPPER_SETTINGS}",
             *set_overrides,
