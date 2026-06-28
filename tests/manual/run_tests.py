@@ -8,8 +8,11 @@ runs one nihdl subcommand in every host-interface project (the directories under
 
 hdl-shared is simulation only: the only available tests are ``gen-modelsim`` and
 ``sim-modelsim``. There are no LabVIEW target plugins to generate and no Vivado
-projects to build or compile, so there are no netlist overrides or shared
-wrapper settings -- each project runs out of the box.
+projects to build or compile. Each nihdl command runs through a shared wrapper
+nihdlsettings.py (``tests/manual/nihdlsettings.py``, passed via ``--config``)
+that loads the project's own settings and, for CI runs, redirects the ModelSim /
+Vivado tools folders from the MODELSIM / XILINX environment variables
+(--modelsim-from-env / --xilinx-from-env).
 
 Generate the ModelSim projects and then run the testbench simulations:
 
@@ -144,7 +147,13 @@ def main() -> int:
     overall: dict[str, bool] = {}
     for test_key in requested:
         test = NIHDL_TESTS[test_key]
-        results = run_test(test, targets, nihdl_cmd=args.nihdl_cmd)
+        results = run_test(
+            test,
+            targets,
+            nihdl_cmd=args.nihdl_cmd,
+            use_modelsim_env=args.modelsim_from_env,
+            use_xilinx_env=args.xilinx_from_env,
+        )
         print_test_summary(test, results)
         overall[test_key] = all(result.passed for result in results)
 

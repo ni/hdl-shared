@@ -9,9 +9,11 @@ more nihdl-command tests in every host-interface project (the directories under
 hdl-shared only ships ModelSim simulation tests -- there are no LabVIEW target
 plugins to generate and no Vivado projects to build -- so the only registered
 tests are ``gen-modelsim`` and ``sim-modelsim``. Each test runs the nihdl
-subcommand directly in a project directory using that project's own
-``nihdlsettings.py`` (no shared wrapper / ``--config`` override is needed), keeps
-going on failures, and reports a pass/fail summary.
+subcommand in a project directory through a shared wrapper nihdlsettings.py
+(``tests/manual/nihdlsettings.py``), passed via ``--config``, which loads that
+project's own ``nihdlsettings.py`` and then applies CI tool-folder overrides
+(MODELSIM / XILINX from the environment) when requested. The run keeps going on
+failures and reports a pass/fail summary.
 
 The simulation verdict comes from the nihdl exit code: ``nihdl sim-modelsim``
 parses the ModelSim transcript and returns a nonzero exit code on any testbench
@@ -114,6 +116,13 @@ NIHDL_TESTS: dict[str, NihdlTest] = {
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+# Shared wrapper nihdlsettings.py passed to every nihdl command via --config.
+# It loads each project's own settings and applies CI tool-folder overrides
+# (MODELSIM / XILINX from the environment) driven by generic ``--set KEY=VALUE``
+# overrides that nihdl forwards to the wrapper as ``context.settings``.
+WRAPPER_SETTINGS = Path(__file__).resolve().parent / "nihdlsettings.py"
+
+
 def default_host_interfaces_dir() -> Path:
     """Return the default <repo>/host_interfaces folder."""
     return REPO_ROOT / "host_interfaces"
@@ -176,16 +185,27 @@ def run_test(
     test: NihdlTest,
     targets: list[DiscoveredTarget],
     nihdl_cmd: str = "nihdl",
+    use_modelsim_env: bool = False,
+    use_xilinx_env: bool = False,
 ) -> list[TargetResult]:
     """Run one nihdl-command test in every project directory.
 
     Keeps going on failures and returns a list of per-project results. Each
-    nihdl command runs in the project directory using that project's own
-    nihdlsettings.py -- no shared wrapper or netlist overrides are applied.
+    nihdl command runs in the project directory through the shared wrapper
+    nihdlsettings.py (via --config), which loads that project's own settings and
+    applies the requested CI tool-folder overrides.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test.key} \u2014 {test.description}")
     print("=" * 80)
+
+    # Tune the shared wrapper's behavior via generic --set overrides that nihdl
+    # forwards to the wrapper's hooks as context.settings.
+    set_overrides: list[str] = []
+    if use_modelsim_env:
+        set_overrides += ["--set", "use_modelsim_env=1"]
+    if use_xilinx_env:
+        set_overrides += ["--set", "use_xilinx_env=1"]
 
     results: list[TargetResult] = []
     for target in targets:
@@ -193,7 +213,12 @@ def run_test(
         print(f"Project: {target.display_name}")
         print(f"Directory: {target.path}")
 
-        command = [nihdl_cmd, *test.subcommand]
+        command = [
+            nihdl_cmd,
+            *test.subcommand,
+            f"--config={WRAPPER_SETTINGS}",
+            *set_overrides,
+        ]
         command_result = run_command(command, target.path)
 
         results.append(
@@ -256,6 +281,25 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
         "--nihdl-cmd",
         default="nihdl",
         help="Command name or full path for nihdl executable (default: nihdl)",
+    )
+    parser.add_argument(
+        "--modelsim-from-env",
+        action="store_true",
+        help=(
+            "Override the ModelSim tools folder from the MODELSIM environment "
+            "variable (set_modelsim_tools_folder). MODELSIM points at the "
+            "modelsim.ini file, so its parent directory is used as the tools "
+            "folder. Intended for CI/pipeline runs. No-op if MODELSIM is unset."
+        ),
+    )
+    parser.add_argument(
+        "--xilinx-from-env",
+        action="store_true",
+        help=(
+            "Override the Vivado tools folder from the XILINX environment "
+            "variable (set_vivado_tools_folder). Intended for CI/pipeline runs "
+            "where XILINX selects the Vivado install. No-op if XILINX is unset."
+        ),
     )
     parser.add_argument(
         "--target",
