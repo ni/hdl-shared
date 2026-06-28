@@ -5,6 +5,9 @@ def pre_all(context):
     """Configure settings for the Register testbench project."""
     config = context.config
 
+    # --- Dependencies ---
+    config.set_dependencies("../../dependencies.toml")
+
     # --- Tools ---
     config.set_vivado_tools_folder("C:/NIFPGA/programs/Vivado2021_1")
     config.set_vivado_tcl_scripts_folder("../common/TCL")
