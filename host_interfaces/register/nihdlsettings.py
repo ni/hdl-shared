@@ -18,16 +18,8 @@ def pre_all(context):
     # every Xilinx family (which takes hours). xcku040 is Kintex UltraScale.
     config.set_xilinx_sim_family("kintexu")
 
-    # --- Vivado Project Settings ---
-    config.set_vivado_top_entity("tb_NiSharedHostRegister")
-    config.set_fpga_part("xcku040-ffva1156-2-e")
-    config.set_vivado_project_folder("VivadoProject")
-
-    # --- HDL Source Code ---
-    config.add_hdl_file_list("vivadoprojectsources.txt")
-    config.add_hdl_file_list("vivadoprojectdeps.txt")
-
     # --- ModelSim Project Settings ---
     config.set_modelsim_project_folder("ModelSimProject")
-    config.add_modelsim_file_list("vivadoprojectsources.txt")
-    config.add_modelsim_file_list("vivadoprojectdeps.txt")
+    config.set_modelsim_top_entity("tb_NiSharedHostRegister")
+    config.add_modelsim_file_list("modelsimprojectsources.txt")
+    config.add_modelsim_file_list("../../deps/flexrio-deps/hdl_shared_deps_list/hdlsharedvivadoprojectdeps.txt")

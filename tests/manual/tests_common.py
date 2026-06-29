@@ -24,6 +24,7 @@ reliable PASS.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import time
 from dataclasses import dataclass
@@ -43,14 +44,19 @@ class CommandResult:
     return_code: int | None
     duration_seconds: float
     error_text: str = ""
+    skipped: bool = False
 
     @property
     def status(self) -> str:
         """Return a human-readable status for reporting."""
+        if self.skipped:
+            return "N/A"
         return "PASS" if self.return_code == 0 else "FAIL"
 
     @property
     def failed(self) -> bool:
+        if self.skipped:
+            return False
         return self.return_code != 0
 
 
@@ -87,6 +93,7 @@ class NihdlTest:
     label: str  # short column label for the summary, e.g. "sim"
     subcommand: list[str]  # nihdl args, e.g. ["gen-modelsim", "--overwrite"]
     description: str = ""
+    requires_testbench: bool = False  # only run on projects with a testbench
 
 
 # Registry of all available nihdl-command tests. hdl-shared is simulation only.
@@ -96,12 +103,14 @@ NIHDL_TESTS: dict[str, NihdlTest] = {
         label="gen-sim",
         subcommand=["gen-modelsim", "--overwrite"],
         description="Generate (overwrite) the ModelSim simulation project",
+        requires_testbench=True,
     ),
     "sim-modelsim": NihdlTest(
         key="sim-modelsim",
         label="sim",
         subcommand=["sim-modelsim"],
         description="Run the ModelSim testbench simulation",
+        requires_testbench=True,
     ),
 }
 
@@ -148,6 +157,25 @@ def discover_targets(host_interfaces_dir: Path) -> list[DiscoveredTarget]:
                 )
             )
     return found
+
+
+# A project is intended to be simulated only when its nihdlsettings.py declares a
+# ModelSim top entity, e.g. config.set_modelsim_top_entity("tb_all"). Projects
+# without it have no testbench, so the ModelSim tests are skipped for them rather
+# than failing the run.
+_MODELSIM_TOP_ENTITY_RE = re.compile(
+    r"""set_modelsim_top_entity\s*\(\s*["']([^"']+)["']\s*\)"""
+)
+
+
+def target_has_testbench(project_path: Path) -> bool:
+    """Return True if the project's nihdlsettings.py sets a ModelSim top entity."""
+    settings_path = project_path / "nihdlsettings.py"
+    try:
+        settings_text = settings_path.read_text(errors="replace")
+    except OSError:
+        return False
+    return bool(_MODELSIM_TOP_ENTITY_RE.search(settings_text))
 
 
 def run_command(command: list[str], cwd: Path) -> CommandResult:
@@ -212,6 +240,24 @@ def run_test(
         print("\n" + "-" * 80)
         print(f"Project: {target.display_name}")
         print(f"Directory: {target.path}")
+
+        # Simulation tests only apply to projects with a testbench (those whose
+        # nihdlsettings.py sets a ModelSim top entity). Skip the rest so a
+        # project without a testbench does not fail the run.
+        if test.requires_testbench and not target_has_testbench(target.path):
+            print("    Skipping: no testbench (no set_modelsim_top_entity in nihdlsettings.py)")
+            results.append(
+                TargetResult(
+                    target_name=target.display_name,
+                    command_result=CommandResult(
+                        command=" ".join(test.subcommand),
+                        return_code=None,
+                        duration_seconds=0.0,
+                        skipped=True,
+                    ),
+                )
+            )
+            continue
 
         command = [
             nihdl_cmd,
