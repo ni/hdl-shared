@@ -1,4 +1,5 @@
-HDL/testbench/PkgCommIntConfiguration.vhd
+HDL/testbench/lvgen/PkgCommIntConfiguration.vhd
+HDL/testbench/lvgen/PkgDmaPortCommIfcRegs.vhd
 HDL/testbench/NiSharedFifoWriterTbWrapper.vhd
 HDL/testbench/NiSharedFifoReaderTbWrapper.vhd
 HDL/verification/NiSharedFifoWriterChecker.vhd
