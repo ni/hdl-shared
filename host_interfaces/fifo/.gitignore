@@ -1,5 +1,5 @@
 __pycache__/
-/objects
-/VivadoProject*
-/ModelSimProject*
+/objects/
+/VivadoProject*/
+/ModelSimProject*/
 *.log

@@ -1,0 +1,7 @@
+HDL/NiSharedHostRegister.vhd
+HDL/NiSharedHostRegisterArray.vhd
+HDL/NiSharedCommonHostRegs.vhd
+HDL/verification/RegPortProtocolChecker.vhd
+HDL/testbench/tb_NiSharedHostRegister.vhd
+HDL/testbench/lvgen/PkgCommIntConfiguration.vhd
+HDL/testbench/lvgen/PkgDmaPortCommIfcRegs.vhd
