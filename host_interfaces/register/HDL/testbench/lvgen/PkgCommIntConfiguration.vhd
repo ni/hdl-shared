@@ -1,23 +1,8 @@
--------------------------------------------------------------------------------
+-------------------------------------------------------------------------
 --
--- File: PkgComIntConfiguration.vhd
--- Author: Claudiu Chirap, Florin Hurgoi, Daria Tioc-Deac
--- Original Project: DmaPort Communication Interface
--- Date: 2 February 2012
+-- LV generated package constants for testbenches
 --
--------------------------------------------------------------------------------
--- (c) 2025 Copyright National Instruments Corporation
--- All Rights Reserved
--- National Instruments Internal Information
--------------------------------------------------------------------------------
---
--- Purpose:
---
---   This package is only intended to configure the package
---   PkgCommunicationInterface. It is dynamically generated from G code based
---   on configuration of the plug-in used.
---
--------------------------------------------------------------------------------
+-------------------------------------------------------------------------
 
 library ieee, work;
 use ieee.std_logic_1164.all;
@@ -26,38 +11,22 @@ use work.PkgNiUtilities.all;
 
 package PkgCommIntConfiguration is
 
-  -- CONSTANTS AND TYPES----------------------------------------------------------------
-
-  -- Constants that configure the communication interface
   constant kAddressWidth          : positive := 22;
   constant kNumberOfDmaChannels   : natural  := 16;
   constant kNumberOfIrqs          : natural  := 1;
   constant kNumberOfMasterPorts   : natural  := 16;
-  constant kNiFpgaFixedInputPorts : natural := 0;
-  constant kNiFpgaFixedOutputPorts : natural := 0;
   constant kIrqBaseOffset         : natural  := 16#120018#;
-  -- 16#120018# is the kIrqBaseOffset value used ONLY for simulation.
-  -- For the actual generated code, kIrqBaseOffset should be equal to 16#10018#;
-  constant kCommunicationTimeout  : natural  := 512;
-  constant kFifoWriteWindow       : natural  := 4096;
+
   constant kFifoReadLatency       : natural  := 4;
-  constant kAutoRun               : boolean  := false;
   constant kDmaDataWidth          : positive := 64;
   constant kDmaAddressWidth       : positive := 32;
   constant kBusBaggageWidth       : natural  := 6;
   constant kInputMaxTransfer      : natural  := 1024;
-  constant kOutputMaxTransfer     : natural  := 1024; 
+  constant kOutputMaxTransfer     : natural  := 1024;
 
-  -- The two constants below define the address range allocated for writing
-  -- HighSpeedSink FIFOs.  kDmaHighSpeedSinkSize needs to be a power-of-two
-  -- and kDmaHighSpeedSinkBase needs to be naturally aligned to a boundary of
-  -- kDmaHighSpeedSinkSize.
-  -- If kDmaHighSpeedSinkBase is 0 and kDmaHighSpeedSinkSize is 1, then P2P
-  -- is not supported on the respective target.
   constant kDmaHighSpeedSinkBase     : natural  :=  16#0#;
   constant kDmaHighSpeedSinkSize     : positive  :=  16#1#;
 
-  -- Constants that configure the InChWORM
   constant kInputMaxRequests      : natural := 4;
   constant kOutputMaxRequests     : natural := 8;
   constant kInputDataBuffer       : natural := 2;
@@ -74,16 +43,11 @@ package PkgCommIntConfiguration is
 
   constant kMaxMuxWidth             : natural := 8;
 
-  constant kAxiMasterMaxBurstLength : integer := 32;
-  constant kAxiSlaveBaseAddress : natural := 16#40000000#;
-  constant kAxiSlaveIdWidth : integer := 6;
-  constant kAxiMasterIdWidth : integer := 3;
-
   type MasterPortMode_t is (
-    Disabled, -- MasterPort is disabled
-    NiFpgaMasterPortWrite, -- MasterPort is only writer
-    NiFpgaMasterPortRead, -- MasterPort is only reader
-    NiFpgaMasterPortWriteRead -- MasterPort is both writer and reader
+    Disabled,
+    NiFpgaMasterPortWrite,
+    NiFpgaMasterPortRead,
+    NiFpgaMasterPortWriteRead
     );
 
   type MasterPortConfiguration_t is record
@@ -94,7 +58,7 @@ package PkgCommIntConfiguration is
     of MasterPortConfiguration_t;
 
   constant kMasterPortConfArray :
-    MasterPortConfArray_t(0 to kNumberOfMasterPorts - 1) := 
+    MasterPortConfArray_t(0 to kNumberOfMasterPorts - 1) :=
       ((Mode => NiFpgaMasterPortWriteRead),
        (Mode => NiFpgaMasterPortWrite),
        (Mode => NiFpgaMasterPortRead),
@@ -114,17 +78,17 @@ package PkgCommIntConfiguration is
       );
 
   type DmaChannelMode_t is (
-    Disabled,               -- channel is disabled (no hardware generated).
-    NiFpgaTargetToHost,     -- input mode using modified mite read interface
-    NiFpgaHostToTarget,     -- output mode using modified mite write interface
-    NiCoreTargetToHost,     -- input mode using standard nicore mite read interface
-    NiCoreHostToTarget,     -- output mode using standard nicore mite write interface
-    NiFpgaPeerToPeerWriter, -- peer to peer input channel
-    NiFpgaPeerToPeerReader,   -- peer to peer output channel
-    NiFpgaMemoryBufferWriter, -- memory buffer peer to peer input channel
-    NiFpgaMemoryBufferReader  -- memory buffer peer to peer output channel
+    Disabled,
+    NiFpgaTargetToHost,
+    NiFpgaHostToTarget,
+    NiCoreTargetToHost,
+    NiCoreHostToTarget,
+    NiFpgaPeerToPeerWriter,
+    NiFpgaPeerToPeerReader,
+    NiFpgaMemoryBufferWriter,
+    NiFpgaMemoryBufferReader
     );
-  
+
   type DmaChannelConfiguration_t is record
     Mode                      : DmaChannelMode_t;
     FifoDepth                 : natural;
@@ -143,31 +107,16 @@ package PkgCommIntConfiguration is
 
   type DmaChannelConfArray_t is array (natural range <>)
     of DmaChannelConfiguration_t;
-  
-  constant kDmaChannelConfigurationZero : DmaChannelConfiguration_t :=
-    (FifoDepth               => 0,
-     FifoWidth               => 0,
-     ElementsPerClockCycle   => 0,
-     SignedData              => false,
-     BaseAddress             => 0,
-     Mode                    => Disabled,
-     SCL                     => false,
-     CountSCL                => false,
-     FxpType                 => false,
-     DisableOnFifoTimeout    => false,
-     WriteWindowOffset       => 0,
-     DmaClkIsDefaultClk      => false,
-     InterfaceIsHandshaking  => false);
 
   constant kDmaFifoConfArray : DmaChannelConfArray_t(0 to Larger(kNumberOfDmaChannels,16) - 1) :=
-(   (Mode => NiFpgaTargetToHost, --0  (matches tb_FifoWriter DUT)
+(   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
---    FifoWidth => 32,
+
     FifoWidth => 64,
     ElementsPerClockCycle => 1,
     SignedData => False,
     BaseAddress =>16#8000#,
---    SCL => False,
+
     SCL => True,
     CountSCL => False,
     FxpType => False,
@@ -176,7 +125,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --1
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 16,
     ElementsPerClockCycle => 1,
@@ -190,7 +139,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --2
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 64,
     ElementsPerClockCycle => 2,
@@ -204,7 +153,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --3
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 16,
     ElementsPerClockCycle => 2,
@@ -218,7 +167,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --4
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 64,
     ElementsPerClockCycle => 4,
@@ -232,7 +181,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --5
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 16,
     ElementsPerClockCycle => 4,
@@ -246,7 +195,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --6
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 32,
     ElementsPerClockCycle => 8,
@@ -260,7 +209,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaTargetToHost, --7
+   (Mode => NiFpgaTargetToHost,
     FifoDepth => 1023,
     FifoWidth => 8,
     ElementsPerClockCycle => 8,
@@ -274,7 +223,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-  (Mode => NiFpgaHostToTarget, --8
+  (Mode => NiFpgaHostToTarget,
     FifoDepth => 1119,
     FifoWidth => 16,
     ElementsPerClockCycle => 16,
@@ -288,7 +237,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => True)
 ,
-   (Mode => NiFpgaHostToTarget, --9
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 1071,
     FifoWidth => 16,
     ElementsPerClockCycle => 8,
@@ -302,7 +251,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaHostToTarget, --10
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 21,
     FifoWidth => 8,
     ElementsPerClockCycle => 1,
@@ -316,7 +265,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => False)
 ,
-   (Mode => NiFpgaHostToTarget, --11
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 1047,
     FifoWidth => 32,
     ElementsPerClockCycle => 4,
@@ -330,7 +279,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaHostToTarget, --12
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 21,
     FifoWidth => 8,
     ElementsPerClockCycle => 1,
@@ -344,7 +293,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaHostToTarget, --13
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 1035,
     FifoWidth => 32,
     ElementsPerClockCycle => 2,
@@ -358,7 +307,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaHostToTarget, --14
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 1029,
     FifoWidth => 8,
     ElementsPerClockCycle => 1,
@@ -372,7 +321,7 @@ package PkgCommIntConfiguration is
     DmaClkIsDefaultClk => False,
     InterfaceIsHandshaking => true)
 ,
-   (Mode => NiFpgaHostToTarget, --15
+   (Mode => NiFpgaHostToTarget,
     FifoDepth => 1029,
     FifoWidth => 32,
     ElementsPerClockCycle => 1,
@@ -387,100 +336,20 @@ package PkgCommIntConfiguration is
     InterfaceIsHandshaking => true)
 );
 
-
-  -- Printing this array even when no DMA channels are supported because
-  -- not printing it causes synthesis problems for other files.  This is
-  -- sized to 2 because Xilinx was complaining when the array was sized
-  -- to 1.
-  constant kMemoryBufferFifoConfArray : DmaChannelConfArray_t(0 to 1) := (
-   (
-    Mode => Disabled,
-    FifoDepth => 0,
-    FifoWidth => 0,
-    SignedData => False,
-    BaseAddress => 16#0#,
-    SCL => False,
-    CountSCL => False,
-    FxpType => False,
-    DisableOnFifoTimeout => False,
-    WriteWindowOffset => 16#0#,
-    DmaClkIsDefaultClk => False,
-    ElementsPerClockCycle => 0,
-    InterfaceIsHandshaking => False
-   ),
-   (
-    Mode => Disabled,
-    FifoDepth => 0,
-    FifoWidth => 0,
-    SignedData => False,
-    BaseAddress => 16#0#,
-    SCL => False,
-    CountSCL => False,
-    FxpType => False,
-    DisableOnFifoTimeout => False,
-    WriteWindowOffset => 16#0#,
-    DmaClkIsDefaultClk => False,
-    ElementsPerClockCycle => 0,
-    InterfaceIsHandshaking => False
-   )
-  );
-
-
-
-  -- FUNCTIONS ----------------------------------------------------------------
-
-  -- Function to return the depths of the DMA FIFOs in samples.
-  function GetFifoDepthsInSamples(ChannelConfig: DmaChannelConfArray_t)
-    return DmaChannelConfArray_t;
-  
   function DmaMaxWidth(DmaChannelConfArray : DmaChannelConfArray_t) return natural;
   function DmaMaxWidth(unused : boolean) return natural;
-  function MemoryBufferDmaMaxWidth(unused : boolean) return natural;
   function DmaMaxDepth(DmaChannelConfArray : DmaChannelConfArray_t) return positive;
   function DmaMaxDepth(unused : boolean) return positive;
-  function MemoryBufferDmaMaxDepth(unused : boolean) return positive;
- 
-  -- Functions to return the number of DMA input, output and sink channels.  
+
   function NumOfInStrms(Arg : DmaChannelConfArray_t) return natural;
   function NumOfOutStrms(Arg : DmaChannelConfArray_t) return natural;
-  function NumOfSinkStrms(Arg : DmaChannelConfArray_t) return natural;
 
-  --Functions to return the number of Write and Read Master Ports.
   function NumOfWriteMasterPorts(Arg : MasterPortConfArray_t) return natural;
   function NumOfReadMasterPorts(Arg : MasterPortConfArray_t) return natural;
-  
+
 end PkgCommIntConfiguration;
 
--------------------------------------------------------------------------------
--- PKGCOMMINTCONFIGURATION BODY
--------------------------------------------------------------------------------
-
 package body PkgCommIntConfiguration is
-
-  -- This function returns an array of the FIFO depths in samples.
-  -- The values passed in should come directly from PkgCommIntConfiguration.
-  function GetFifoDepthsInSamples(ChannelConfig: DmaChannelConfArray_t)
-    return DmaChannelConfArray_t is
-
-    variable ReturnVal : DmaChannelConfArray_t(ChannelConfig'range);
-
-  begin
-    -- Set the configuration output equal to the configuration input.
-    ReturnVal := ChannelConfig;
-
-    -- Find the depth for each channel.  
-    for i in ChannelConfig'range loop
-      -- An output channel needs to subtract the size of the pop buffer.
-      if ChannelConfig(i).Mode = NiFpgaTargetToHost or
-         ChannelConfig(i).Mode = NiFpgaPeerToPeerWriter then
-        ReturnVal(i).FifoDepth := ChannelConfig(i).FifoDepth;
-      else
-        ReturnVal(i).FifoDepth := ChannelConfig(i).FifoDepth -
-                                  ChannelConfig(i).ElementsPerClockCycle * 6;
-      end if;
-    end loop;
-    return ReturnVal;
-  end GetFifoDepthsInSamples;
 
   function DmaMaxWidth(DmaChannelConfArray : DmaChannelConfArray_t) return natural is
     variable maxWidth : natural := 1;
@@ -490,17 +359,12 @@ package body PkgCommIntConfiguration is
                     DmaChannelConfArray(i).FifoWidth*DmaChannelConfArray(i).ElementsPerClockCycle);
     end loop;
     return maxWidth;
-  end DmaMaxWidth;  
+  end DmaMaxWidth;
 
   function DmaMaxWidth(unused : boolean) return natural is
   begin
     return DmaMaxWidth(kDmaFifoConfArray);
   end DmaMaxWidth;
-
-  function MemoryBufferDmaMaxWidth(unused : boolean) return natural is
-  begin
-    return DmaMaxWidth(kMemoryBufferFifoConfArray);
-  end MemoryBufferDmaMaxWidth;
 
   function DmaMaxDepth(DmaChannelConfArray : DmaChannelConfArray_t) return positive is
     variable maxDepth : positive := 1;
@@ -516,13 +380,7 @@ package body PkgCommIntConfiguration is
     return DmaMaxDepth(kDmaFifoConfArray);
   end DmaMaxDepth;
 
-  function MemoryBufferDmaMaxDepth(unused : boolean) return positive is
-  begin
-    return DmaMaxDepth(kMemoryBufferFifoConfArray);
-  end MemoryBufferDmaMaxDepth;
-
-  -- This function returns the number of used DMA input channels.  
-  function NumOfInStrms(Arg : DmaChannelConfArray_t) 
+  function NumOfInStrms(Arg : DmaChannelConfArray_t)
   return natural is
     variable ReturnVal : natural;
   begin
@@ -534,10 +392,8 @@ package body PkgCommIntConfiguration is
     end loop;
     return ReturnVal;
   end NumOfInStrms;
-  
-  -- This function returns the number of used DMA output channels.  This includes
-  -- peer-to-peer sink streams.
-  function NumOfOutStrms(Arg : DmaChannelConfArray_t) 
+
+  function NumOfOutStrms(Arg : DmaChannelConfArray_t)
   return natural is
     variable ReturnVal : natural;
   begin
@@ -550,22 +406,7 @@ package body PkgCommIntConfiguration is
     return ReturnVal;
   end NumOfOutStrms;
 
-  -- This function returns the number of used DMA sink channels.  
-  function NumOfSinkStrms(Arg : DmaChannelConfArray_t) 
-  return natural is
-    variable ReturnVal : natural;
-  begin
-    ReturnVal := 0;
-    for i in arg'range loop
-      if Arg(i).Mode = NiFpgaPeerToPeerReader or Arg(i).Mode = NiFpgaMemoryBufferReader then
-        ReturnVal := ReturnVal + 1;
-      end if;
-    end loop;
-    return ReturnVal;
-  end NumOfSinkStrms;
-
-  -- This function returns the number of used Write Master Ports.  
-  function NumOfWriteMasterPorts(Arg : MasterPortConfArray_t) 
+  function NumOfWriteMasterPorts(Arg : MasterPortConfArray_t)
   return natural is
     variable ReturnVal : natural;
   begin
@@ -577,10 +418,8 @@ package body PkgCommIntConfiguration is
     end loop;
     return ReturnVal;
   end NumOfWriteMasterPorts;
-  
-  -- This function returns the number of used DMA output channels.  This includes
-  -- peer-to-peer sink streams.
-  function NumOfReadMasterPorts(Arg : MasterPortConfArray_t) 
+
+  function NumOfReadMasterPorts(Arg : MasterPortConfArray_t)
   return natural is
     variable ReturnVal : natural;
   begin
@@ -592,5 +431,5 @@ package body PkgCommIntConfiguration is
     end loop;
     return ReturnVal;
   end NumOfReadMasterPorts;
-  
+
 end PkgCommIntConfiguration;
