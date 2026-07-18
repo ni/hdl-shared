@@ -29,11 +29,6 @@ library work;
 
 package PkgNiSharedFifo is
 
-
-  -- Starting index where user HDL FIFOs are inserted into kDmaFifoConfArray.
-  constant kUserHdlDmaStartIndex : natural :=
-    kNumberOfDmaChannels - 1 - kNiFpgaFixedInputPorts - kNiFpgaFixedOutputPorts;
-
   ---------------------------------------------------------------------------
   -- Supported host API data types for DMA FIFOs
   ---------------------------------------------------------------------------

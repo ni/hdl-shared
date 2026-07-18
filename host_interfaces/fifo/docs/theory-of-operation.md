@@ -70,16 +70,16 @@ captures both the element width and signedness in one enum — for example `kInt
 `FifoDataIsSigned(DataType)` derive the bit width and sign behavior from it, so you no
 longer specify width and signedness separately.
 
-The `MergeDmaFifoConf` function in `PkgNiSharedFifo` expands these simplified entries into full `DmaChannelConfiguration_t` records and merges them into the system array starting at `kUserHdlDmaStartIndex` (currently index 3, growing downward).
+The `MergeDmaFifoConf` function in `PkgNiSharedFifo` expands these simplified entries into full `DmaChannelConfiguration_t` records and merges them into the system array starting at `kUserHdlDmaStartIndex`, growing downward. That start index is a per-target *derived* constant defined in `PkgUserHdl` (not in the shared `PkgNiSharedFifo`), computed as `kNumberOfDmaChannels - 1 - kNumFixedLogicDmaStreams` from the generated `PkgCommIntConfiguration` and `PkgNiHdlSettings` packages.
 
 ### 3. Channel Index Assignment
 
 User FIFO channels are assigned system DMA channel indices as follows:
 
 ```
-UserConf(0) → System channel kUserHdlDmaStartIndex     (3)
-UserConf(1) → System channel kUserHdlDmaStartIndex - 1 (2)
-UserConf(2) → System channel kUserHdlDmaStartIndex - 2 (1)
+UserConf(0) → System channel kUserHdlDmaStartIndex
+UserConf(1) → System channel kUserHdlDmaStartIndex - 1
+UserConf(2) → System channel kUserHdlDmaStartIndex - 2
 ...
 ```
 
