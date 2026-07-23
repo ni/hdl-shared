@@ -23,3 +23,10 @@ def pre_all(context):
     config.set_modelsim_top_entity("tb_NiSharedHostRegister")
     config.add_modelsim_file_list("modelsimprojectsources.txt")
     config.add_modelsim_file_list("../../deps/flexrio-deps/hdl_shared_deps_list/hdlsharedvivadoprojectdeps.txt")
+    # ModelSim compiles the ENTIRE hdlsharedvivadoprojectdeps.txt list, so the nidmaip
+    # packages (e.g. PkgNiDma) are always compiled even for projects that do not use the
+    # DMA/FIFO datapath. Those packages consume PkgNiDmaConfig.vhd, which is intentionally
+    # NOT in hdlsharedvivadoprojectdeps because it is target-family-specific and would
+    # conflict with the target-specific version when custom targets consume the shared HDL.
+    # So each project must supply one concrete version itself; we pick it here for simulation.
+    config.add_modelsim_file_list("../common/targetspecificdeps.txt")
