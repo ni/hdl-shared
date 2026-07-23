@@ -24,4 +24,11 @@ def pre_all(context):
     config.set_modelsim_top_entity("tb_all")
     config.add_modelsim_file_list("modelsimprojectsources.txt")
     config.add_modelsim_file_list("../../deps/flexrio-deps/hdl_shared_deps_list/hdlsharedvivadoprojectdeps.txt")
+    # PkgNiDmaConfig.vhd is a shared dependency for the FIFO endpoints but can be different for different
+    # target families.  We do not put it into the hdlsharedvivadoprojectdeps because that list gets pulled 
+    # into the custom target file lists when they use shared FIFO HDL and it would cause conflicts with the 
+    # target-specific version of PkgNiDmaConfig.vhd specified in the target file lists.
+    #
+    # For the purposes of this project, we only need to pick one specific version for simulation.
+    config.add_modelsim_file_list("targetspecificdeps.txt")
 
