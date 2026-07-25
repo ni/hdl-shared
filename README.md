@@ -22,7 +22,11 @@ provides the two communication primitives most designs need:
 These are the same building blocks NI uses internally, packaged for direct instantiation
 in your own VHDL. You drop them into a custom target's top-level HDL, wire them to your
 logic, and access them from the host with the NI-RIO API (or the supplied LabVIEW host
-VIs).
+VIs). They work in both of the tools' compile flows — the **Vivado compile flow** (HDL
+compiled directly in Vivado) and the **LabVIEW FPGA compile flow** (a custom LabVIEW FPGA
+target). See the
+[Theory of Operation](https://github.com/ni/labview-fpga-hdl-tools/blob/main/docs/TheoryOfOperation.md)
+for the difference.
 
 ## How this relates to `flexrio-custom` (and other custom-target repos)
 
@@ -209,7 +213,8 @@ for you. The mechanics, so you can reproduce them in your own target:
    [register instantiation guide](host_interfaces/register/docs/instantiation-guide.md)
    and the [FIFO instantiation guide](host_interfaces/fifo/docs/instantiation-guide.md).
 
-6. **Access from the host.** Build the bitfile in Vivado, then talk to your registers and
+6. **Access from the host.** Build the bitfile — in Vivado (the Vivado compile flow) or
+   from LabVIEW FPGA (the LabVIEW FPGA compile flow) — then talk to your registers and
    FIFOs from the host with the NI-RIO API. Ready-made host VIs for register access live in
    `host_interfaces/register/LabVIEW/` (available in a target at
    `deps/hdl-shared/host_interfaces/register/LabVIEW/`).
