@@ -31,6 +31,10 @@ def pre_all(context):
     """Wrapper hook: load the project settings, then apply CI tool overrides.
 
     Recognized ``--set`` keys (passed to nihdl on the command line):
+      * ``skip_tools=1``        validation-only mode: set_skip_modelsim and
+        set_skip_vivado so nihdl validates the project and file lists without
+        launching ModelSim/Vivado. Forwarded by run_tests.py's --skip-tools
+        flag; intended for GitHub-hosted runners without the FPGA tools.
       * ``use_modelsim_env=1``  override the ModelSim tools folder from the
         MODELSIM environment variable (set_modelsim_tools_folder). MODELSIM
         points at the modelsim.ini file, so its parent directory is used as the
@@ -48,6 +52,18 @@ def pre_all(context):
     load_settings(target_settings, context)
 
     _debug_dump_environment(context)
+
+    # CI/pipeline: validation-only mode for GitHub-hosted runners that do not
+    # have the FPGA tools installed. With skip_modelsim/skip_vivado set, nihdl
+    # validates the project settings and file lists (e.g. gen-modelsim) without
+    # launching ModelSim/Vivado. Forwarded by run_tests.py's --skip-tools flag.
+    if context.settings.get("skip_tools"):
+        print(
+            "[wrapper-debug] skip_tools: enabling validation-only mode "
+            "(set_skip_modelsim / set_skip_vivado)"
+        )
+        context.config.set_skip_modelsim(True)
+        context.config.set_skip_vivado(True)
 
     # CI/pipeline: select the ModelSim install via the MODELSIM environment
     # variable when explicitly enabled. MODELSIM points at the modelsim.ini

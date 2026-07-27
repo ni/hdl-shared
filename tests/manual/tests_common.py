@@ -215,6 +215,7 @@ def run_test(
     nihdl_cmd: str = "nihdl",
     use_modelsim_env: bool = False,
     use_xilinx_env: bool = False,
+    skip_tools: bool = False,
 ) -> list[TargetResult]:
     """Run one nihdl-command test in every project directory.
 
@@ -222,6 +223,11 @@ def run_test(
     nihdl command runs in the project directory through the shared wrapper
     nihdlsettings.py (via --config), which loads that project's own settings and
     applies the requested CI tool-folder overrides.
+
+    When ``skip_tools`` is True the wrapper puts nihdl into validation-only mode
+    (set_skip_modelsim / set_skip_vivado), so gen-modelsim validates the project
+    and file lists without requiring ModelSim/Vivado to be installed. This is
+    the mode used by the GitHub-hosted smoke-test workflow.
     """
     print("\n" + "=" * 80)
     print(f"TEST: {test.key} \u2014 {test.description}")
@@ -234,6 +240,8 @@ def run_test(
         set_overrides += ["--set", "use_modelsim_env=1"]
     if use_xilinx_env:
         set_overrides += ["--set", "use_xilinx_env=1"]
+    if skip_tools:
+        set_overrides += ["--set", "skip_tools=1"]
 
     results: list[TargetResult] = []
     for target in targets:
@@ -346,6 +354,18 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
             "Override the Vivado tools folder from the XILINX environment "
             "variable (set_vivado_tools_folder). Intended for CI/pipeline runs "
             "where XILINX selects the Vivado install. No-op if XILINX is unset."
+        ),
+    )
+    parser.add_argument(
+        "--skip-tools",
+        action="store_true",
+        help=(
+            "Validation-only mode: tell the wrapper to set_skip_modelsim / "
+            "set_skip_vivado so nihdl validates the project and file lists "
+            "without launching ModelSim/Vivado. Use on GitHub-hosted runners "
+            "that do not have the FPGA tools installed (e.g. gen-modelsim smoke "
+            "tests). Do not combine with sim-modelsim, which needs a real "
+            "ModelSim install."
         ),
     )
     parser.add_argument(

@@ -1,0 +1,113 @@
+name: Smoke Tests
+
+# hdl-shared is simulation only: the shared HDL building blocks are exercised
+# through ModelSim testbenches, not built directly in Vivado. This smoke test
+# therefore validates only the ModelSim flow. It runs on GitHub-hosted runners
+# that do NOT have ModelSim installed, so it uses gen-modelsim in validation-only
+# mode (--skip-tools) to confirm each host_interfaces project's settings and
+# file lists are consistent. It intentionally does not run sim-modelsim, which
+# needs a real ModelSim install.
+
+on:
+  workflow_dispatch:
+    inputs:
+      install_deps_args:
+        description: "Extra args for nihdl install-deps (example: --pre --latest)"
+        required: false
+        default: ""
+        type: string
+  pull_request:
+    paths:
+      - "host_interfaces/**"
+      - "dependencies.toml"
+      - "tests/**"
+      - ".github/workflows/smoke-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "host_interfaces/**"
+      - "dependencies.toml"
+      - "tests/**"
+      - ".github/workflows/smoke-tests.yml"
+
+jobs:
+  hdl-shared-modelsim-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          Set-Location $env:GITHUB_WORKSPACE
+          python nisetup.py --no-venv
+
+      - name: Show nihdl version
+        shell: pwsh
+        run: |
+          Set-Location $env:GITHUB_WORKSPACE
+          Write-Host "labview-fpga-hdl-tools version in use:"
+          nihdl version
+
+      - name: Discover host_interfaces projects
+        id: discover
+        shell: pwsh
+        run: |
+          Set-Location $env:GITHUB_WORKSPACE
+          $projects = Get-ChildItem "host_interfaces" -Directory |
+            Where-Object { Test-Path (Join-Path $_.FullName "nihdlsettings.py") } |
+            ForEach-Object { (Resolve-Path -Relative $_.FullName) -replace '^\.[\\/]', '' -replace '\\', '/' } |
+            Sort-Object
+
+          if (-not $projects) {
+            throw "No projects with nihdlsettings.py were found under host_interfaces/."
+          }
+
+          "projects=$($projects -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Discovered projects: $($projects -join ', ')"
+
+      - name: Run install-deps once
+        shell: pwsh
+        run: |
+          Set-Location $env:GITHUB_WORKSPACE
+          $projects = "${{ steps.discover.outputs.projects }}".Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
+          $firstProject = $projects[0]
+          $configPath = Join-Path $env:GITHUB_WORKSPACE "tests" "manual" "nihdlsettings.py"
+          $inputArgs = ""
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $inputArgs = "${{ github.event.inputs.install_deps_args }}"
+          }
+
+          $extraArgs = @()
+          if ($inputArgs -and $inputArgs.Trim()) {
+            $extraArgs = $inputArgs.Trim().Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            Write-Host "Using extra install-deps args: $($extraArgs -join ' ')"
+          }
+
+          Write-Host "Running install-deps from $firstProject"
+          Push-Location $firstProject
+          try {
+            & nihdl --verbose install-deps --config=$configPath @extraArgs
+          }
+          finally {
+            Pop-Location
+          }
+
+      - name: Run ModelSim generation smoke test
+        shell: pwsh
+        run: |
+          Set-Location $env:GITHUB_WORKSPACE
+          # gen-modelsim in validation-only mode (--skip-tools) across every
+          # host_interfaces project. This validates the ModelSim project settings
+          # and file lists without requiring a ModelSim install on the runner.
+          python tests/manual/run_tests.py gen-modelsim --skip-tools

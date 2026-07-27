@@ -94,6 +94,7 @@ def main() -> int:
         "  python run_tests.py --list\n"
         "  python run_tests.py\n"
         "  python run_tests.py gen-modelsim sim-modelsim\n"
+        "  python run_tests.py gen-modelsim --skip-tools\n"
         "  python run_tests.py sim-modelsim --target fifo\n"
         "  python run_tests.py sim-modelsim --nihdl-cmd C:/path/to/nihdl.exe\n"
     )
@@ -153,6 +154,7 @@ def main() -> int:
             nihdl_cmd=args.nihdl_cmd,
             use_modelsim_env=args.modelsim_from_env,
             use_xilinx_env=args.xilinx_from_env,
+            skip_tools=args.skip_tools,
         )
         print_test_summary(test, results)
         overall[test_key] = all(result.passed for result in results)
