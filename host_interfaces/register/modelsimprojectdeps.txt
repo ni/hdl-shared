@@ -1,0 +1,2 @@
+../../deps/flexrio-deps/encrypted/fpgaDigitalDesigns.25.1.0f405/distribution/release/fpgaDigitalDesigns/LabVIEW/rvi/Vivado/HDL/CommonFiles/NiCores/Packages/PkgNiUtilities.vhd
+../../deps/flexrio-deps/encrypted/nicores_nidmaip.1.1.0d14/PCIe/CommonFiles/Source/PkgCommunicationInterface.vhd

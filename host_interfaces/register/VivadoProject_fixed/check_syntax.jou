@@ -1,0 +1,12 @@
+#-----------------------------------------------------------
+# Vivado v2021.1 (64-bit)
+# SW Build 3247384 on Thu Jun 10 19:36:33 MDT 2021
+# IP Build 3246043 on Fri Jun 11 00:30:35 MDT 2021
+# Start of session at: Thu Mar 26 13:34:49 2026
+# Process ID: 13596
+# Current directory: C:/dev/github8/hdl-shared/host_interfaces/register/VivadoProject
+# Command line: vivado.exe -mode batch -source C:\dev\github8\hdl-shared\host_interfaces\register\objects\TCL\CheckSyntax.tcl -log C:\dev\github8\hdl-shared\host_interfaces\register\VivadoProject\check_syntax.log -journal C:\dev\github8\hdl-shared\host_interfaces\register\VivadoProject\check_syntax.jou
+# Log file: C:/dev/github8/hdl-shared/host_interfaces/register/VivadoProject/check_syntax.log
+# Journal file: C:\dev\github8\hdl-shared\host_interfaces\register\VivadoProject\check_syntax.jou
+#-----------------------------------------------------------
+source {C:\dev\github8\hdl-shared\host_interfaces\register\objects\TCL\CheckSyntax.tcl}
