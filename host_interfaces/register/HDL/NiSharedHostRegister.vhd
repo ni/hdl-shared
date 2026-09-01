@@ -120,7 +120,7 @@ begin
 
   -- Read process: output data to the host must be valid for one clock cycle
   -- after a read request 
-  Reading:process (BusClk)
+  Reading:process (aReset, BusClk)
   begin
     if aReset then
       bRegPortOut.Data <= (others => '0');

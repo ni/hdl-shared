@@ -4,8 +4,8 @@
 --
 -------------------------------------------------------------------------------
 -- (c) Copyright National Instruments Corporation
--- All Rights Reserved
--- National Instruments Internal Information
+--
+-- SPDX-License-Identifier: MIT
 -------------------------------------------------------------------------------
 --
 -- Purpose:
