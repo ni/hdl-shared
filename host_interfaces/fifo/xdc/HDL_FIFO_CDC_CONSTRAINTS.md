@@ -2,8 +2,8 @@
 
 ## Overview
 
-When NI FlexRIO FPGAs use HDL Shared FIFOs (`HdlSharedInputFifoInterface` and
-`HdlSharedOutputFifoInterface`), the FIFO logic crosses between two clock
+When NI FlexRIO FPGAs use HDL Shared FIFOs (`NiSharedFifoWriter` and
+`NiSharedFifoReader`), the FIFO logic crosses between two clock
 domains:
 
 | Clock     | Frequency | Nominal Period | Effective Period | Role                      |
@@ -27,51 +27,52 @@ registers inside each CDC building block.
 | File | Purpose |
 |------|---------|
 | `gen_constraints.py` | Python script that generates the XDC constraint block |
-| `constraints.xdc` | Main Vivado constraint file; the generated block is appended at the end |
+| `hdl_fifo_cdc_constraints.xdc` | The generated CDC constraint file, sourced by the Vivado flow |
 
 ---
 
 ## How to Use
 
-### 1. Configure FIFO instance names
+**In the common case you do nothing.** `hdl_fifo_cdc_constraints.xdc` is
+pre-generated and checked in. It targets the CDC synchronizers inside
+`NiSharedFifoWriterCore` / `NiSharedFifoReaderCore` with wildcard-prefixed
+patterns, so it applies at any hierarchy depth in any target that instantiates
+the shared FIFO blocks — it works out of the box.
 
-Edit the `INPUT_FIFOS` and `OUTPUT_FIFOS` lists at the top of
-`gen_constraints.py`:
+### Consuming the constraints in a custom target
+
+Reference the checked-in file **in place** (do not copy it) from the target's
+`nihdlsettings.py`. For example, in a `flexrio-custom` target:
 
 ```python
-INPUT_FIFOS = [
-    "InputFifo_inst",      # ch2 TargetToHost
-]
-
-OUTPUT_FIFOS = [
-    "OutputFifo_inst",     # ch3 HostToTarget
-]
+config.add_custom_constraints(
+    "../../deps/hdl-shared/host_interfaces/fifo/xdc/hdl_fifo_cdc_constraints.xdc",
+    order=1,
+)
 ```
 
-Use the **leaf instance name** as declared in the VHDL instantiation.  The
-generator prefixes every pattern with `*` so it matches at any hierarchy depth
-(e.g. `*InputFifo_inst/...` matches both `InputFifo_inst/...` at the top level
-and `Wrapper_inst/InputFifo_inst/...` inside a wrapper).
+The tools fold it into the generated constraint set and it is evaluated during
+the normal Vivado / LabVIEW FPGA compile. Nothing else is required for the FIFO
+CDC paths to be constrained correctly.
 
-### 2. Run the generator
+### Regenerating (only if you change the FIFO HDL or want custom behavior)
+
+Re-run the generator only when you modify the shared FIFO RTL (adding or renaming
+CDC synchronizers) or want to customize the constraints. Write the result back
+over the checked-in file and commit it:
 
 ```
-python gen_constraints.py -o hdl_fifo_constraints.xdc
+python gen_constraints.py -o hdl_fifo_cdc_constraints.xdc
 ```
 
-### 3. Append to constraints.xdc
+(The script's default output path points at `../objects/xdc/` for build-time
+generation; pass `-o hdl_fifo_cdc_constraints.xdc` to update the committed copy in
+this folder.) If your design instantiates the FIFO cores under different instance
+names, update `WRITER_FIFOS` / `READER_FIFOS` at the top of the script first.
 
-Paste the generated XDC at the **end** of `constraints.xdc`, after all existing
-NI-generated constraints.  The generated block starts with:
+### Compile
 
-```tcl
-###################################################################################
-## HDL Shared FIFO CDC Constraints
-```
-
-### 4. Compile
-
-Run the normal Vivado compile flow.  The constraints are evaluated during
+Run the normal Vivado compile flow. The constraints are evaluated during
 `link_design` as part of the standard XDC parsing.
 
 ---

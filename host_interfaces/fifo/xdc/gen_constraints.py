@@ -1,10 +1,10 @@
 """Generate inline XDC constraints for HDL Shared FIFO CDC crossings.
 
 Usage:
-    1. Add your NiFifoWriter instance names to WRITER_FIFOS.
-    2. Add your NiFifoReader instance names to READER_FIFOS.
+    1. Add your NiSharedFifoWriter instance names to WRITER_FIFOS.
+    2. Add your NiSharedFifoReader instance names to READER_FIFOS.
     3. Run: python gen_constraints.py
-    4. Append the generated hdl_fifo_constraints.xdc to your project constraints.
+    4. Append the generated hdl_fifo_cdc_constraints.xdc to your project constraints.
 
 Instance names need only be the leaf instance name -- all generated XDC
 patterns are prefixed with a '*' wildcard so they match at any hierarchy
@@ -26,11 +26,11 @@ from pathlib import Path
 # =========================================================================
 
 WRITER_FIFOS = [
-    "NiFifoWriterCorex",     # TargetToHost FIFIO
+    "NiSharedFifoWriterCorex",   # TargetToHost FIFO
 ]
 
 READER_FIFOS = [
-    "NiFifoReaderCorex",     # HostToTarget FIFO
+    "NiSharedFifoReaderCorex",   # HostToTarget FIFO
 ]
 
 # Clock parameters from MacallanClocks.xml
@@ -201,7 +201,7 @@ def emit_pulse_sync_with_ack(inst, crossing_path, label, iT, oT):
 # =========================================================================
 
 def emit_writer_fifo(inst):
-    """Emit all CDC constraints for one NiFifoWriter instance (TargetToHost).
+    """Emit all CDC constraints for one NiSharedFifoWriter instance (TargetToHost).
 
     Internal structure (TargetToHost / Writer):
       Push = DmaClk (250 MHz)   Pop = BusClk/PllClk80 (80 MHz)
@@ -209,7 +209,7 @@ def emit_writer_fifo(inst):
     w = f"*{inst}"  # wildcard prefix for hierarchy-independent matching
 
     emit("# =================================================================================")
-    emit(f"#  {inst}  (NiFifoWriter / TargetToHost)")
+    emit(f"#  {inst}  (NiSharedFifoWriter / TargetToHost)")
     emit("#    Push = DmaClk (250 MHz), Pop = PllClk80 (80 MHz)")
     emit("# =================================================================================")
     emit()
@@ -287,7 +287,7 @@ def emit_writer_fifo(inst):
 
 
 def emit_reader_fifo(inst):
-    """Emit all CDC constraints for one NiFifoReader instance (HostToTarget).
+    """Emit all CDC constraints for one NiSharedFifoReader instance (HostToTarget).
 
     Internal structure (HostToTarget / Reader):
       Push = BusClk/PllClk80 (80 MHz)   Pop = DmaClk (250 MHz)
@@ -295,7 +295,7 @@ def emit_reader_fifo(inst):
     w = f"*{inst}"  # wildcard prefix for hierarchy-independent matching
 
     emit("# =================================================================================")
-    emit(f"#  {inst}  (NiFifoReader / HostToTarget)")
+    emit(f"#  {inst}  (NiSharedFifoReader / HostToTarget)")
     emit("#    Push = PllClk80 (80 MHz), Pop = DmaClk (250 MHz)")
     emit("# =================================================================================")
     emit()

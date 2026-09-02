@@ -48,7 +48,7 @@ package PkgNiSharedFifo is
   --   kInteger32    I32          32    yes
   --   kUnsigned64   U64          64    no
   --   kInteger64    I64          64    yes
-  --   kSingle       SGL          64    no     (single-precision floating point)
+  --   kSingle       SGL          32    no     (single-precision floating point)
   type FifoDataType_t is (
     kBoolean,
     kUnsigned8,  kInteger8,
@@ -118,7 +118,7 @@ package body PkgNiSharedFifo is
       when kUnsigned16 | kInteger16  => return 16;
       when kUnsigned32 | kInteger32  => return 32;
       when kUnsigned64 | kInteger64  => return 64;
-      when kSingle                   => return 64;  -- SGL: 64-bit element
+      when kSingle                   => return 32;  -- SGL: single-precision, 32-bit element
     end case;
   end function;
 
@@ -155,6 +155,11 @@ package body PkgNiSharedFifo is
   ) return DmaChannelConfArray_t is
     variable Result : DmaChannelConfArray_t(BaseConf'range);
   begin
+    -- Addresses and channel mapping below use the loop index directly as the
+    -- config index, so UserConf must be indexed 0 to N-1.
+    assert UserConf'left = 0
+      report "MergeDmaFifoConf: UserConf must be indexed 0 to N-1 (0-based)."
+      severity failure;
     Result := BaseConf;
     for i in UserConf'range loop
       Result(StartIndex - i) := (
@@ -182,6 +187,10 @@ package body PkgNiSharedFifo is
   ) return NiDmaDmaChannelOneHot_t is
     variable Result : NiDmaDmaChannelOneHot_t := (others => false);
   begin
+    -- Channel mapping mirrors MergeDmaFifoConf, so UserConf must be 0-based.
+    assert UserConf'left = 0
+      report "GetForceChannelEnable: UserConf must be indexed 0 to N-1 (0-based)."
+      severity failure;
     for i in UserConf'range loop
       Result(StartIndex - i) := true;
     end loop;

@@ -70,7 +70,7 @@ building a bitfile.
 | Path | Contents |
 |------|----------|
 | `host_interfaces/register/` | Host register building blocks, testbench, host LabVIEW VIs, and docs. |
-| `host_interfaces/fifo/` | DMA FIFO building blocks (`NiSharedFifoWriter`/`Reader`), config package, and docs. |
+| `host_interfaces/fifo/` | DMA FIFO building blocks (`NiSharedFifoWriter`/`Reader`), config package, docs, and ready-to-use CDC timing constraints (`xdc/`). |
 | `host_interfaces/common/` | Shared TCL helper scripts used by the simulation projects. |
 | `dependencies.toml` | Declares this repo's own dependencies (support HDL + the HDL tools). |
 | `deps/` | Dependencies cloned by the tools (e.g. `flexrio-deps`). Not checked in. |
@@ -112,6 +112,12 @@ building a bitfile.
 > port reference, and the
 > [theory of operation](host_interfaces/fifo/docs/theory-of-operation.md) for the
 > streaming model.
+
+> **FIFO timing constraints.** `host_interfaces/fifo/xdc/hdl_fifo_cdc_constraints.xdc`
+> holds pre-generated clock-domain-crossing constraints for the FIFO blocks. Custom
+> targets reference this file **in place** (no copy needed) and it works out of the
+> box — see
+> [host_interfaces/fifo/xdc/HDL_FIFO_CDC_CONSTRAINTS.md](host_interfaces/fifo/xdc/HDL_FIFO_CDC_CONSTRAINTS.md).
 
 A complete worked example that combines registers **and** FIFOs in one design is the
 `pxie-7912custom` target in `flexrio-custom`

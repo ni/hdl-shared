@@ -83,11 +83,16 @@ UserConf(2) → System channel kUserHdlDmaStartIndex - 2
 ...
 ```
 
-Each channel's DMA register base address is computed by:
+Each user FIFO's DMA register base address is derived from its **config index**
+(its position in `kUserHdlDmaFifoConf`), not its system DMA channel index:
 
 ```vhdl
-BaseAddress = 0x3FFC0 - ChannelIndex * 0x40
+BaseAddress = 0x37FFC - ConfigIndex * 0x40
 ```
+
+Config index 0 maps to `0x37FFC` and each subsequent entry steps down by `0x40`.
+User HDL FIFOs occupy `0x37FFC` down to `0x30000`; the upper half of the DMA register
+space (`0x3FFFC` down to `0x38000`) is reserved for LabVIEW FPGA FIFOs.
 
 ## Stream State Machine
 

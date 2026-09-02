@@ -55,7 +55,7 @@ sets the FIFO width and signedness automatically — you never specify them dire
 | `kInteger32` | I32 | 32 | yes |
 | `kUnsigned64` | U64 | 64 | no |
 | `kInteger64` | I64 | 64 | yes |
-| `kSingle` | SGL | 64 | no (single-precision float) |
+| `kSingle` | SGL | 32 | no (single-precision float) |
 
 ### FIFO Depth Rules
 

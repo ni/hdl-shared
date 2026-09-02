@@ -62,118 +62,40 @@ end entity NiSharedCommonHostRegs;
 architecture rtl of NiSharedCommonHostRegs is
 
   constant kNumRegisters : natural := 4;
-  constant kSignatureOffset : natural := 0;
-  constant kVersionOffset : natural := 4;
-  constant kOldestCompatibleVersionOffset : natural := 8;
-  constant kScratchOffset : natural := 12;
-  type RegPortOutArray_t is array (natural range <>) of RegPortOut_t;
-  signal bRegPortOutArray : RegPortOutArray_t(0 to kNumRegisters-1);
+
+  -- Registers 0..3 at byte offsets 0x00/0x04/0x08/0x0C:
+  --   Signature (RO), Version (RO), Oldest-Compatible-Version (RO), Scratch (RW).
+  constant kDefaults : Slv32Ary_t(0 to kNumRegisters-1) :=
+    (0 => kSignature, 1 => kVersion, 2 => kOldestCompatibleVersion, 3 => x"00000000");
+  constant kReadOnly : BooleanVector(0 to kNumRegisters-1) :=
+    (0 => true, 1 => true, 2 => true, 3 => false);
+  constant kFalseVec : BooleanVector(0 to kNumRegisters-1) := (others => false);
+  constant kZeroData : Slv32Ary_t(0 to kNumRegisters-1)    := (others => (others => '0'));
 
 begin
 
-
-  SignatureReg: entity work.NiSharedHostRegister
+  -- Built on NiSharedHostRegisterArray at base offset 0. The FPGA-side ports are
+  -- unused here: the three identity registers are read-only and Scratch is
+  -- host-only, so no FPGA writes/acks are driven.
+  CommonRegsArray: entity work.NiSharedHostRegisterArray
     generic map(
       kMaxHdlRegOffset => kMaxHdlRegOffset,
-      kOffset => kSignatureOffset,
-      kDefault => kSignature,
-      kReadOnly => true,
-      kUseFpgaAck => false
+      kNumRegisters    => kNumRegisters,
+      kBaseAddress     => 0,
+      kDefault         => kDefaults,
+      kReadOnly        => kReadOnly,
+      kUseFpgaAck      => kFalseVec
     )
     port map(
       BusClk         => BusClk,
       aReset         => aReset,
       bRegPortIn     => bRegPortIn,
-      bRegPortOut    => bRegPortOutArray(0),
+      bRegPortOut    => bRegPortOut,
       bFpgaHostWrite => open,
-      bFpgaAck       => false,
-      bFpgaWrite     => false,
-      bFpgaDataIn    => (others => '0'),
+      bFpgaAck       => kFalseVec,
+      bFpgaWrite     => kFalseVec,
+      bFpgaDataIn    => kZeroData,
       bFpgaDataOut   => open
     );
-
-
-  VersionReg: entity work.NiSharedHostRegister
-    generic map(
-      kMaxHdlRegOffset => kMaxHdlRegOffset,
-      kOffset => kVersionOffset,
-      kDefault => kVersion,
-      kReadOnly => true,
-      kUseFpgaAck => false
-    )
-    port map(
-      BusClk         => BusClk,
-      aReset         => aReset,
-      bRegPortIn     => bRegPortIn,
-      bRegPortOut    => bRegPortOutArray(1),
-      bFpgaHostWrite => open,
-      bFpgaAck       => false,
-      bFpgaWrite     => false,
-      bFpgaDataIn    => (others => '0'),
-      bFpgaDataOut   => open
-    );
-
-
-  OldestCompatibleVersionReg: entity work.NiSharedHostRegister
-    generic map(
-      kMaxHdlRegOffset => kMaxHdlRegOffset,
-      kOffset => kOldestCompatibleVersionOffset,
-      kDefault => kOldestCompatibleVersion,
-      kReadOnly => true,
-      kUseFpgaAck => false
-    )
-    port map(
-      BusClk         => BusClk,
-      aReset         => aReset,
-      bRegPortIn     => bRegPortIn,
-      bRegPortOut    => bRegPortOutArray(2),
-      bFpgaHostWrite => open,
-      bFpgaAck       => false,
-      bFpgaWrite     => false,
-      bFpgaDataIn    => (others => '0'),
-      bFpgaDataOut   => open
-    );
-
-  Scratch: entity work.NiSharedHostRegister
-    generic map(
-      kMaxHdlRegOffset => kMaxHdlRegOffset,
-      kOffset => kScratchOffset,
-      kDefault => x"00000000",
-      kReadOnly => false,
-      kUseFpgaAck => false
-    )
-    port map(
-      BusClk         => BusClk,
-      aReset         => aReset,
-      bRegPortIn     => bRegPortIn,
-      bRegPortOut    => bRegPortOutArray(3),
-      bFpgaHostWrite => open,
-      bFpgaAck       => false,
-      bFpgaWrite     => false,
-      bFpgaDataIn    => (others => '0'),
-      bFpgaDataOut   => open
-    );
-   
-
-  -- Combine register outputs using OR reduction for Data/DataValid, AND reduction for Ready
-  CombineOutputs: process(bRegPortOutArray)
-    variable vCombinedData : std_logic_vector(31 downto 0);
-    variable vCombinedValid : boolean;
-    variable vCombinedReady : boolean;
-  begin
-    vCombinedData := (others => '0');
-    vCombinedValid := false;
-    vCombinedReady := true;
-    
-    for i in 0 to kNumRegisters-1 loop
-      vCombinedData := vCombinedData or bRegPortOutArray(i).Data;
-      vCombinedValid := vCombinedValid or bRegPortOutArray(i).DataValid;
-      vCombinedReady := vCombinedReady and bRegPortOutArray(i).Ready;
-    end loop;
-    
-    bRegPortOut.Data <= vCombinedData;
-    bRegPortOut.DataValid <= vCombinedValid;
-    bRegPortOut.Ready <= vCombinedReady;
-  end process CombineOutputs;
 
 end rtl;
