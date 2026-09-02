@@ -86,7 +86,8 @@ building a bitfile.
 | `NiSharedHostRegister.vhd` | Core single 32-bit host-visible register, with optional read-only and FPGA acknowledge/ready gating. |
 | `NiSharedHostRegisterArray.vhd` | A bank of N independent registers placed at `kBaseAddress + 4·i`, each individually configurable. |
 | `NiSharedCommonHostRegs.vhd` | A standard 4-register block (Signature, Version, Oldest-Compatible-Version, Scratch) for design identity and bring-up. |
-| `tb_NiSharedHostRegister.vhd` | Behavioral testbench for all three blocks. |
+| `testbench/tb_NiSharedHostRegister.vhd` | Behavioral testbench for all three blocks. |
+| `verification/RegPortProtocolChecker.vhd` | Simulation-only RegPort protocol monitor instantiated by the blocks and the testbench. |
 
 > See [host_interfaces/register/docs/README.md](host_interfaces/register/docs/README.md)
 > for an overview, the [instantiation guide](host_interfaces/register/docs/instantiation-guide.md)
@@ -98,9 +99,11 @@ building a bitfile.
 
 | File | Role |
 |------|------|
-| `NiSharedFifoWriter.vhd` | Target-to-Host (FPGA → Host) streaming FIFO. |
-| `NiSharedFifoReader.vhd` | Host-to-Target (Host → FPGA) streaming FIFO. |
+| `NiSharedFifoWriter.vhd` | Target-to-Host (FPGA → Host) streaming FIFO. Thin wrapper over `NiSharedFifoWriterCore.vhd`. |
+| `NiSharedFifoReader.vhd` | Host-to-Target (Host → FPGA) streaming FIFO. Thin wrapper over `NiSharedFifoReaderCore.vhd`. |
+| `NiSharedFifoWriterCore.vhd` / `NiSharedFifoReaderCore.vhd` | Internal datapath implementations wrapped by the Writer/Reader entities. |
 | `PkgNiSharedFifo.vhd` | `UserDmaFifoConf_t` config record, `FifoDataType_t`, and the helpers that expand user config into full DMA channel settings. |
+| `verification/NiSharedFifoWriterChecker.vhd` / `NiSharedFifoReaderChecker.vhd` | Simulation-only FIFO protocol monitors instantiated by the Writer/Reader. |
 
 > See [host_interfaces/fifo/docs/README.md](host_interfaces/fifo/docs/README.md)
 > for an overview, the [instantiation guide](host_interfaces/fifo/docs/instantiation-guide.md)
@@ -124,11 +127,11 @@ version specifiers (the same syntax `pip install` uses):
 
 ```toml
 github_dependencies = [
-    "ni/flexrio-deps~=26.3.0.dev0",   # support HDL the shared blocks compile against
+    "ni/flexrio-deps~=26.4.0",       # support HDL the shared blocks compile against
 ]
 
 python_dependencies = [
-    "labview-fpga-hdl-tools~=0.4.0",  # the `nihdl` CLI used to build/simulate
+    "labview-fpga-hdl-tools~=2.0.0", # the `nihdl` CLI used to build/simulate
 ]
 ```
 
@@ -145,7 +148,7 @@ There are two kinds of dependency:
   user-facing components.
 
 Version specifiers keep a custom target pinned to a compatible set of repositories:
-`~=26.3.0` means "≥ 26.3.0 and < 26.4.0". When you check out a tagged release of a
+`~=26.4.0` means "≥ 26.4.0 and < 26.5.0". When you check out a tagged release of a
 custom-target repo, its `dependencies.toml` selects the matching shared HDL.
 
 ---

@@ -36,7 +36,7 @@ timing.
 	- Standard common register block intended for most designs.
 	- Exposes fixed offsets for signature, version, oldest compatible version, and scratch.
 
-- `HDL/tb_NiSharedHostRegister.vhd`
+- `HDL/testbench/tb_NiSharedHostRegister.vhd`
 	- Behavioral testbench covering single-register behavior, array behavior, and common-register behavior.
 
 > **`kMaxHdlRegOffset`** — every register block takes a `kMaxHdlRegOffset` generic and
