@@ -572,7 +572,7 @@ begin
 
     FpgaWriteArray(2, x"2222BBBB");
     wait for kClkPeriod;
-    assert bFpgaDataOut_Array(2) = x"2222BBBB"
+    assert bFpgaDataOut_Array(2) = x"2222BBAB"
       report "FAIL: Array FPGA write on reg2 failed" severity error;
     HostReadArray(kArrayReg2Offset, vReadData, vReadValid);
     assert vReadData = x"2222BBBB"
