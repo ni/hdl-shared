@@ -1,9 +1,7 @@
 -------------------------------------------------------------------------------
 --
 -- File: NiSharedFifoReaderCore.vhd
--- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
--- Date: 12 June 2008
 --
 -------------------------------------------------------------------------------
 -- (c) 2008 Copyright National Instruments Corporation
@@ -21,8 +19,7 @@
 -- the enable chains (pop/read, reset, stream state queries, and
 -- state transition requests) are now exposed directly on the entity ports.
 --
--- Bogdan Popa - 09/09/2013
--- Added support for the Handshaking interface.
+-- Supports the Handshaking interface.
 --
 -------------------------------------------------------------------------------
 

@@ -7,7 +7,7 @@
 ## each CDC component instance.  If the design changes, only the known safe
 ## flip-flops are relaxed -- new logic will NOT be silently caught.
 ##
-## Clock domains (effective periods from MacallanClocks.xml):
+## Clock domains (effective periods from the target clock definitions):
 ##   DmaClk  = 250 MHz  (3.7496000400 ns) -- ViClk / PCIe side
 ##   BusClk  =  80 MHz  (12.2487501250 ns) -- PllClk80 / comm side
 ##   Formula: 1/(freq*(1+PPM/1e6)) - jitter  [PPM=100, jitter=250ps]

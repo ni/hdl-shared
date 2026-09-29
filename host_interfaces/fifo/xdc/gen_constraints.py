@@ -33,7 +33,7 @@ READER_FIFOS = [
     "NiSharedFifoReaderCorex",   # HostToTarget FIFO
 ]
 
-# Clock parameters from MacallanClocks.xml
+# Clock parameters from the target clock definitions
 # Effective CDC period = 1/(freq*(1 + ppm/1e6)) - jitter
 # This matches the exact values NI's constraint generator computes.
 DMA_FREQ_HZ    = 250e6
@@ -389,7 +389,7 @@ def main():
     emit("## each CDC component instance.  If the design changes, only the known safe")
     emit("## flip-flops are relaxed -- new logic will NOT be silently caught.")
     emit("##")
-    emit("## Clock domains (effective periods from MacallanClocks.xml):")
+    emit("## Clock domains (effective periods from the target clock definitions):")
     emit(f"##   DmaClk  = 250 MHz  ({DMA_PERIOD_NS:.10f} ns) -- ViClk / PCIe side")
     emit(f"##   BusClk  =  80 MHz  ({BUS_PERIOD_NS:.10f} ns) -- PllClk80 / comm side")
     emit(f"##   Formula: 1/(freq*(1+PPM/1e6)) - jitter  [PPM={CLOCK_PPM}, jitter={CLOCK_JITTER_PS}ps]")

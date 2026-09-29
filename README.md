@@ -3,10 +3,6 @@
 Reusable, host-facing HDL building blocks for custom NI FPGA designs, for use with the
 [LabVIEW FPGA HDL Tools](https://github.com/ni/labview-fpga-hdl-tools).
 
-> **Pre-release** — this code is not yet supported by NI. Use the
-> [Issues](https://github.com/ni/flexrio-custom/issues) and
-> [Discussions](https://github.com/ni/flexrio-custom/discussions) sections of the
-> `flexrio-custom` repository to collaborate with the developers and other lead users.
 
 ---
 

@@ -1,9 +1,7 @@
 -------------------------------------------------------------------------------
 --
 -- File: NiSharedFifoWriterCore.vhd
--- Author: Matthew Koenn
 -- Original Project: LabVIEW FPGA
--- Date: 11 June 2008
 --
 -------------------------------------------------------------------------------
 -- (c) 2008 Copyright National Instruments Corporation
@@ -13,18 +11,17 @@
 --
 -- Purpose:
 --
--- This file implements the input DMA FIFO that connects to the Chinch LvFpga
--- interface.  The module consists of an input FIFO, stream state management,
+-- This file implements the input DMA FIFO that connects to the LabVIEW FPGA
+-- DMA interface.  The module consists of an input FIFO, stream state management,
 -- and some interconnect between them.
 --
 -- Enable chain logic has been removed; the signals formerly abstracted by
 -- the enable chains (push/pop, reset, flush, stream state queries, and
 -- state transition requests) are now exposed directly on the entity ports.
 --
--- Bogdan Popa - 09/09/2013
--- Added support for the Handshaking interface.
+-- Supports the Handshaking interface.
 --
--- Harmish - 08/04/2014 - Added support for Flush method.
+-- Supports the Flush method.
 -- * vFlush strobe drives the Flush logic in DmaPortInStrmFifo.
 -- * New field "FlushRequest" is added to the bInputStreamInterfaceFromFifo record(PkgDmaPortDmaFifos.vhd)
 -------------------------------------------------------------------------------
@@ -462,7 +459,7 @@ begin
     -- The WritesDisabled signal to be sent back to the BusClk domain is based on the
     -- unlatched stream state, since this value must be guaranteed to eventually settle
     -- to false while the stream state from the controller is Enabled.  Otherwise,
-    -- handshaking for the ChinchDmaSourceStreamStateController would not be
+    -- handshaking for the DmaPortCommIfcSourceStreamStateController would not be
     -- possible.
     
     vWritesDisabled <= not (vStreamStateValue = to_StreamStateValue(Enabled));
@@ -618,7 +615,7 @@ begin
     -- !ASSUMPTION!
     -- The iReady signal is ignored, which means that if a stream disables due to
     -- overflow and then re-enables before the handshake is ready, an overflow could
-    -- potentially ignored.  I am making the assumption that this will not happen because
+    -- potentially ignored.  This is assumed not to happen because
     -- the host is required to enable a stream, and this should be much slower than the
     -- time required to handshake the overflow stop request.
     -------------------------------------------------------------------------------------
