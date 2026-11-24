@@ -35,6 +35,13 @@ library work;
   use work.PkgCommIntConfiguration.all;
 
 entity tb_FifoReader is
+  generic (
+    -- Clock periods for the FIFO BusClk port (DMA side; DmaClk in hardware)
+    -- and ViClk port (user side; the target's BusClk in UserHdl).
+    -- The two clocks are free-running and unrelated, so any ratio exercises
+    -- the CDC logic.  tb_all instantiates several ratios.
+    kBusClkPeriod : time := 8 ns;
+    kViClkPeriod  : time := 23 ns);
 end tb_FifoReader;
 
 architecture test of tb_FifoReader is
@@ -97,10 +104,6 @@ architecture test of tb_FifoReader is
   -- Interrupt mask bit indices
   constant kEnableStartStreamIrqBit : natural := 4;
   constant kEnableStopStreamIrqBit  : natural := 6;
-
-  -- Clock periods
-  constant kBusClkPeriod : time := 8 ns;
-  constant kViClkPeriod  : time := 23 ns;
 
   ---------------------------------------------------------------------------
   -- Signals
@@ -1266,6 +1269,43 @@ begin
       DoNormalTransmission(NumOfBytes => vRandByteCount);
     end loop;
     report "=== SECTION 11 PASSED ===";
+
+    -----------------------------------------------------------------------
+    -- SECTION 12: Simultaneous reset release
+    --
+    -- Release the bus and diagram reset domains on the same delta cycle,
+    -- once aligned to each clock.  The stream state is returned to the DMA
+    -- stream controller through a HandshakeBaseResetCross that spans both
+    -- reset domains; the controller will not advance Disabled->Enabled or
+    -- Enabled->Disabled until that handshake reports the matching state, so
+    -- a full link/enable/transfer/disable cycle proves it recovered cleanly.
+    -----------------------------------------------------------------------
+    SetTestStatus("S12: Simultaneous reset");
+    report "=== SECTION 12: Simultaneous reset release ===";
+    for Aligned in 0 to 1 loop
+      aReset <= true;
+      aDiagramReset <= true;
+      BusClkWait(10);
+      if Aligned = 0 then
+        wait until rising_edge(BusClk);
+      else
+        wait until rising_edge(ViClk);
+      end if;
+      aReset <= false;
+      aDiagramReset <= false;
+      BusClkWait(30);
+      CheckStreamState(Unlinked);
+      LinkStream;
+      CheckStreamState(Disabled);
+      EnableStream;
+      CheckStreamState(Enabled);
+      DisableStream;
+      WaitForDisable;
+      CheckStreamState(Disabled);
+      ResetChannel;
+      DoNormalTransmission(NumOfBytes => 50 * kFifoDataWidth/8);
+    end loop;
+    report "=== SECTION 12 PASSED ===";
 
     -----------------------------------------------------------------------
     -- Done

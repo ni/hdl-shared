@@ -20,6 +20,15 @@ See the **[instantiation guide](instantiation-guide.md)** for step-by-step usage
 **[theory of operation](theory-of-operation.md)** for the streaming model and DMA
 architecture.
 
+> **Clock naming.** The FIFO clock ports do not match the target's clock names: the FIFO
+> `BusClk` port is driven by **`DmaClk`**, and the FIFO `ViClk` port by the target's 80 MHz
+> `BusClk` (PllClk80): `BusClk => DmaClk, ViClk => BusClk`. See
+> [Clock Domains](theory-of-operation.md#clock-domains).
+>
+> **`ViClk` must be an 80 MHz clock.** The shared CDC constraints hard-code 80 MHz for
+> `ViClk` (and 250 MHz for `DmaClk`); with any other `ViClk` frequency they are silently
+> wrong — Vivado reports nothing, and a faster `ViClk` leaves the crossings under-constrained.
+
 ## Project files
 
 ### FPGA HDL Code

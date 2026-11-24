@@ -105,6 +105,17 @@ end entity UserHdl;
 
 ## Step 3: Instantiate NiSharedFifoWriter (Target-to-Host)
 
+> **Clock connections — read first.** The FIFO's clock port names do not match the
+> target's clock names. Connect the FIFO **`BusClk`** port to **`DmaClk`** (250 MHz) and the
+> FIFO **`ViClk`** port to the target's **`BusClk`** (PllClk80, 80 MHz):
+> `BusClk => DmaClk, ViClk => BusClk`. Inside the FIFO, `BusClk` means the DMA clock;
+> in `UserHdl`, `BusClk` means the target's 80 MHz clock. See
+> [Clock Domains](theory-of-operation.md#clock-domains) for the full explanation.
+>
+> ⚠️ **`ViClk` must be 80 MHz.** The shared CDC constraints hard-code an 80 MHz `ViClk`.
+> Driving `ViClk` from any other clock frequency makes them silently wrong — Vivado gives
+> no error, and a faster clock leaves the FIFO's clock-domain crossings under-constrained.
+
 The Writer FIFO accepts data from your HDL logic and transfers it to the host via DMA.
 
 ```vhdl
@@ -121,10 +132,10 @@ WriterFifo_inst : entity work.NiSharedFifoWriter
   port map(
     aDiagramReset                 => abDiagramReset,
     aBusReset                     => aBusReset,
-    BusClk                        => DmaClk,
+    BusClk                        => DmaClk,   -- FIFO BusClk port = DMA clock
     bInputStreamInterfaceToFifo   => dWriterInputStreamInterfaceToFifo,
     bInputStreamInterfaceFromFifo => dWriterInputStreamInterfaceFromFifo,
-    ViClk                         => BusClk,
+    ViClk                         => BusClk,   -- FIFO ViClk port = target BusClk (must be 80 MHz)
     vDataIn                       => bWriterFifoDataIn,
     vFull                         => bWriterFifoFull,
     vWriteFifo                    => bWriterFifoWriteStrobe,
@@ -155,11 +166,11 @@ dWriterOutputStreamInterfaceFromFifo <= kOutputStreamInterfaceFromFifoZero;
 | `kPeerToPeer` | — | `true` for peer-to-peer source stream |
 | `kDisableOnFifoTimeout` | — | `true` to auto-disable on overflow |
 
-### Writer User Interface Ports (ViClk domain)
+### Writer User Interface Ports (ViClk port domain — user side)
 
 | Port | Direction | Type | Description |
 |------|-----------|------|-------------|
-| `ViClk` | in | `std_logic` | User logic clock |
+| `ViClk` | in | `std_logic` | User logic clock. **Must be 80 MHz** for the shared CDC constraints; in `UserHdl`, connect the target's `BusClk` (PllClk80) |
 | `vDataIn` | in | `std_logic_vector(kSampleWidth*kNumOfSamplesPerWrite-1 downto 0)` | Data to write into FIFO |
 | `vFull` | out | `boolean` | FIFO is full; do not write |
 | `vWriteFifo` | in | `boolean` | Write enable — assert together with `vInputValid` to push a sample; may be held to write continuously |
@@ -173,13 +184,13 @@ dWriterOutputStreamInterfaceFromFifo <= kOutputStreamInterfaceFromFifoZero;
 | `vFlushTimeoutRequest` | in | `boolean` | Assert to trigger flush timeout (tie `false` if unused) |
 | `vStopWithFlushRequestStrobe` | in | `boolean` | Assert to flush then stop (tie `false` if unused) |
 
-### Writer Bus Interface Ports (BusClk/DmaClk domain)
+### Writer Bus Interface Ports (BusClk port domain — DMA side, driven by DmaClk)
 
 | Port | Direction | Type | Description |
 |------|-----------|------|-------------|
 | `aDiagramReset` | in | `boolean` | Asynchronous diagram reset |
 | `aBusReset` | in | `boolean` | Asynchronous bus reset |
-| `BusClk` | in | `std_logic` | DMA bus clock (connect to `DmaClk`) |
+| `BusClk` | in | `std_logic` | DMA-side clock. Connect to `DmaClk`, **not** the target's `BusClk` |
 | `bInputStreamInterfaceToFifo` | in | `InputStreamInterfaceToFifo_t` | From Communication Interface |
 | `bInputStreamInterfaceFromFifo` | out | `InputStreamInterfaceFromFifo_t` | To Communication Interface |
 
@@ -202,10 +213,10 @@ ReaderFifo_inst : entity work.NiSharedFifoReader
   port map(
     aDiagramReset                  => abDiagramReset,
     aBusReset                      => aBusReset,
-    BusClk                         => DmaClk,
+    BusClk                         => DmaClk,   -- FIFO BusClk port = DMA clock
     bOutputStreamInterfaceToFifo   => dReaderOutputStreamInterfaceToFifo,
     bOutputStreamInterfaceFromFifo => dReaderOutputStreamInterfaceFromFifo,
-    ViClk                          => BusClk,
+    ViClk                          => BusClk,   -- FIFO ViClk port = target BusClk (must be 80 MHz)
     vDataOut                       => bReaderFifoDataOut,
     vEmpty                         => bReaderFifoEmpty,
     vReadFifo                      => bReaderFifoReadStrobe,
@@ -232,11 +243,11 @@ dReaderInputStreamInterfaceFromFifo <= kInputStreamInterfaceFromFifoZero;
 | `kPeerToPeer` | — | `true` for peer-to-peer sink stream |
 | `kDisableOnFifoTimeout` | — | `true` to auto-disable on underflow |
 
-### Reader User Interface Ports (ViClk domain)
+### Reader User Interface Ports (ViClk port domain — user side)
 
 | Port | Direction | Type | Description |
 |------|-----------|------|-------------|
-| `ViClk` | in | `std_logic` | User logic clock |
+| `ViClk` | in | `std_logic` | User logic clock. **Must be 80 MHz** for the shared CDC constraints; in `UserHdl`, connect the target's `BusClk` (PllClk80) |
 | `vDataOut` | out | `std_logic_vector(kSampleWidth*kNumOfSamplesPerRead-1 downto 0)` | Data read from FIFO |
 | `vEmpty` | out | `boolean` | FIFO is empty; no data available |
 | `vReadFifo` | in | `boolean` | Read enable — assert to request data; may be held to stream continuously. Wait for `vOutputValid` before capturing `vDataOut` |
@@ -247,13 +258,13 @@ dReaderInputStreamInterfaceFromFifo <= kInputStreamInterfaceFromFifoZero;
 | `vStartStreamRequest` | in | `boolean` | Assert to request Disabled → Enabled transition |
 | `vStopRequestStrobe` | in | `boolean` | Assert to request immediate stop |
 
-### Reader Bus Interface Ports (BusClk/DmaClk domain)
+### Reader Bus Interface Ports (BusClk port domain — DMA side, driven by DmaClk)
 
 | Port | Direction | Type | Description |
 |------|-----------|------|-------------|
 | `aDiagramReset` | in | `boolean` | Asynchronous diagram reset |
 | `aBusReset` | in | `boolean` | Asynchronous bus reset |
-| `BusClk` | in | `std_logic` | DMA bus clock (connect to `DmaClk`) |
+| `BusClk` | in | `std_logic` | DMA-side clock. Connect to `DmaClk`, **not** the target's `BusClk` |
 | `bOutputStreamInterfaceToFifo` | in | `OutputStreamInterfaceToFifo_t` | From Communication Interface |
 | `bOutputStreamInterfaceFromFifo` | out | `OutputStreamInterfaceFromFifo_t` | To Communication Interface |
 
@@ -270,6 +281,10 @@ See [interface-descriptions.md](interface-descriptions.md) for complete signal t
 Before data can flow through a FIFO, you must transition the stream from Disabled to Enabled. This is done by asserting `vStartStreamRequest` for one clock cycle.
 
 ### Typical Start/Stop Pattern
+
+This glue logic runs in `UserHdl`, so `BusClk` here is the **target's** `BusClk` — the
+same clock you connected to the FIFO's `ViClk` port. That is why `b*` signals in
+`UserHdl` drive the FIFO's `v*` ports.
 
 ```vhdl
 StartStopGlue : process(BusClk)
@@ -404,13 +419,17 @@ The `UserHdl.vhd` reference design demonstrates a complete implementation where 
 
 ## Signal Naming Conventions
 
-| Prefix | Meaning |
-|--------|---------|
-| `a` | Asynchronous signal (not clocked) |
-| `b` | BusClk domain signal |
-| `d` | DmaClk domain signal |
-| `v` | ViClk (user clock) domain signal |
-| `k` | Constant/generic |
+The `b` prefix means a different clock depending on where the signal lives, because the
+FIFO's `BusClk` port is driven by `DmaClk` (see
+[Clock Domains](theory-of-operation.md#clock-domains)).
+
+| Prefix | In `UserHdl` / target top level | Inside `NiSharedFifo*` |
+|--------|---------------------------------|------------------------|
+| `a` | Asynchronous signal (not clocked) | Asynchronous signal (not clocked) |
+| `b` | Target `BusClk` (PllClk80, 80 MHz); drives the FIFO's `v*` ports | FIFO `BusClk` port = `DmaClk` (250 MHz) |
+| `d` | `DmaClk` (250 MHz); the `d*StreamInterface*` signals connect to the FIFO's `b*` ports | — |
+| `v` | — | FIFO `ViClk` port (80 MHz user clock) |
+| `k` | Constant/generic | Constant/generic |
 
 ---
 
@@ -424,5 +443,6 @@ The `UserHdl.vhd` reference design demonstrates a complete implementation where 
 - [ ] Drive unused stream direction outputs to zero constants
 - [ ] Implement start/stop control logic (one-cycle pulses)
 - [ ] Check `vFull` before presenting a sample (writing while full drops it); wait for `vOutputValid` when reading
-- [ ] Connect `BusClk` port to `DmaClk` (not the user logic clock)
-- [ ] Connect `ViClk` port to your user logic clock
+- [ ] Connect the FIFO `BusClk` port to `DmaClk` (not the target's `BusClk`)
+- [ ] Connect the FIFO `ViClk` port to the target's `BusClk` (PllClk80) — **it must be an 80 MHz clock**, or the shared CDC constraints are silently wrong
+- [ ] Add `xdc/hdl_fifo_cdc_constraints.xdc` to the target constraints

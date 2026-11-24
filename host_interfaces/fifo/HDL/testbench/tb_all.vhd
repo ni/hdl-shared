@@ -28,4 +28,12 @@ begin
 
   OutputFifoTb : entity work.tb_FifoReader(test);
 
+  -- Same Reader suite at the pxie-7912 clock ratio (core BusClk = DmaClk
+  -- 250 MHz, ViClk = PllClk80 80 MHz) and with ViClk faster than BusClk.
+  OutputFifoTbHwRatio : entity work.tb_FifoReader(test)
+    generic map (kBusClkPeriod => 4 ns, kViClkPeriod => 12.5 ns);
+
+  OutputFifoTbFastViClk : entity work.tb_FifoReader(test)
+    generic map (kBusClkPeriod => 12 ns, kViClkPeriod => 5 ns);
+
 end test;

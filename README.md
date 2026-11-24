@@ -111,9 +111,14 @@ building a bitfile.
 
 > **FIFO timing constraints.** `host_interfaces/fifo/xdc/hdl_fifo_cdc_constraints.xdc`
 > holds pre-generated clock-domain-crossing constraints for the FIFO blocks. Custom
-> targets reference this file **in place** (no copy needed) and it works out of the
-> box — see
+> targets reference this file **in place** (no copy needed) — see
 > [host_interfaces/fifo/xdc/HDL_FIFO_CDC_CONSTRAINTS.md](host_interfaces/fifo/xdc/HDL_FIFO_CDC_CONSTRAINTS.md).
+>
+> **These constraints are only valid if every FIFO's `ViClk` port is driven by an
+> 80 MHz clock** (the target's `BusClk` / PllClk80) and its `BusClk` port by the
+> 250 MHz `DmaClk`. With any other `ViClk` frequency the constraints are silently
+> wrong: Vivado gives no error, and a faster `ViClk` leaves the clock-domain
+> crossings under-constrained.
 
 A complete worked example that combines registers **and** FIFOs in one design is the
 `pxie-7912custom` target in `flexrio-custom`

@@ -16,6 +16,29 @@
 --   FPGA logic into a DMA FIFO for transfer to the host.  Internally it
 --   wraps NiSharedFifoWriterCore.
 --
+-- Clock naming (read before connecting clocks):
+--
+--   The clock port names come from the LabVIEW FPGA DMA FIFO internals and
+--   do NOT match the clock names of a FlexRIO custom target:
+--
+--     FIFO port  Side                             Connect to (UserHdl)
+--     ---------  -------------------------------  ------------------------------
+--     BusClk     DMA side: b*StreamInterface*     DmaClk (250 MHz)
+--     ViClk      User side: every v* port         the target's BusClk
+--                                                 (PllClk80) -- MUST be 80 MHz
+--
+--   So in UserHdl the connections are  BusClk => DmaClk,  ViClk => BusClk.
+--   The "b" prefix on this entity's ports means the FIFO BusClk port domain
+--   (DmaClk); it is not the target's BusClk domain.  The two clocks are
+--   asynchronous.
+--
+--   *** REQUIREMENT: ViClk MUST be driven by an 80 MHz clock (the target's
+--   *** BusClk / PllClk80) and BusClk by the 250 MHz DmaClk.  The shared CDC
+--   *** constraints (xdc/hdl_fifo_cdc_constraints.xdc) hard-code these
+--   *** frequencies.  With any other ViClk frequency they are silently wrong:
+--   *** Vivado reports nothing, and a faster ViClk leaves the clock-domain
+--   *** crossings under-constrained.
+--
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -71,11 +94,12 @@ entity NiSharedFifoWriter is
 
       aBusReset : in boolean;
 
-      -- The IO Port 2 transmit clock
+      -- DMA-side clock for the b* stream interface ports below.  Connect to
+      -- DmaClk, NOT the target's BusClk (see "Clock naming" above).
       BusClk : in std_logic;
 
       -------------------------------------------------------------------------
-      -- Communication Interface interface
+      -- Communication Interface interface (FIFO BusClk port domain = DmaClk)
       -------------------------------------------------------------------------
 
       bInputStreamInterfaceToFifo   : in  InputStreamInterfaceToFifo_t;
@@ -85,7 +109,9 @@ entity NiSharedFifoWriter is
       -- User VI interface for writing (all signals in ViClk domain)
       -------------------------------------------------------------------------
 
-      -- User logic clock for all v-prefixed signals below
+      -- User logic clock for all v-prefixed signals below.  MUST be 80 MHz
+      -- (the target's BusClk / PllClk80) for the shared CDC constraints to be
+      -- valid; see REQUIREMENT above.
       ViClk          : in std_logic;
 
       -- Data to write. Must be stable on the cycle vWriteFifo is asserted.
