@@ -126,14 +126,42 @@ The stream state is managed by the Communication Interface. User HDL controls tr
 
 ## Clock Domains
 
-Each FIFO has two clock domains:
+Each FIFO has two clock ports. **Their names come from the LabVIEW FPGA DMA FIFO
+internals and do not match the clock names of a FlexRIO custom target**, so read this
+section before connecting them.
 
-| Clock | Purpose |
-|-------|---------|
-| **BusClk** | The DMA bus clock. Connects to the Communication Interface stream ports. This is the DMA engine's clock domain. |
-| **ViClk** | The user logic clock. All user-facing data, control, and status ports operate in this domain. Can be the same as BusClk or a different clock. |
+| FIFO port | Side | Ports in this domain | Connect to (FlexRIO `UserHdl`) | Required frequency |
+|-----------|------|----------------------|--------------------------------|--------------------|
+| **`BusClk`** | DMA side | `bInputStreamInterface*` / `bOutputStreamInterface*` (to/from the Communication Interface) | **`DmaClk`** | **250 MHz** |
+| **`ViClk`** | User side | every `v*` data, status, and control port | the **target's `BusClk`** (PllClk80) | **80 MHz** |
 
-The FIFO internally handles clock-domain crossing between BusClk and ViClk.
+> **`ViClk` must be 80 MHz.** The shared CDC constraints
+> ([`xdc/hdl_fifo_cdc_constraints.xdc`](../xdc/hdl_fifo_cdc_constraints.xdc)) hard-code an
+> 80 MHz `ViClk` and a 250 MHz `DmaClk`. If any FIFO's `ViClk` is driven by a clock of any
+> other frequency, those constraints are **silently wrong**: Vivado reports no error, and a
+> faster `ViClk` leaves the FIFO's clock-domain crossings under-constrained. The FIFO logic
+> itself works at any `ViClk` frequency; it is the constraints that require 80 MHz.
+
+So in `UserHdl` the clock connections are crossed over:
+
+```vhdl
+BusClk => DmaClk,   -- FIFO "BusClk" port gets the 250 MHz DMA clock
+ViClk  => BusClk,   -- FIFO "ViClk"  port gets the target's 80 MHz BusClk
+```
+
+The signal prefixes follow the same crossover:
+
+| Prefix | Inside the FIFO (`NiSharedFifo*`) | In `UserHdl` / the target top level |
+|--------|-----------------------------------|-------------------------------------|
+| `b` | FIFO `BusClk` port domain = **`DmaClk`** | target `BusClk` (PllClk80); these signals connect to the FIFO's **`v*`** ports |
+| `d` | — | `DmaClk`; the `d*StreamInterface*` signals connect to the FIFO's **`b*`** ports |
+| `v` | FIFO `ViClk` port domain = the 80 MHz user clock | — |
+
+The two clocks are asynchronous. The FIFO handles every crossing between them internally
+with synchronizers (handshakes, pulse synchronizers, double synchronizers, and the FIFO
+pointer crossings). Those synchronizers rely on the timing constraints in
+[`xdc/hdl_fifo_cdc_constraints.xdc`](../xdc/hdl_fifo_cdc_constraints.xdc), which is why the
+80 MHz `ViClk` requirement above matters.
 
 ## FIFO Depth Sizing
 

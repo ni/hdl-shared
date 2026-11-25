@@ -1,5 +1,13 @@
 # NiSharedFifo — Interface Descriptions
 
+> **Clock naming.** This page describes the user side of each FIFO, which runs on the FIFO's
+> `ViClk` port. The FIFO's other clock port is named `BusClk` but is driven by `DmaClk`, not by
+> the target's `BusClk`; in `UserHdl` the target's `BusClk` is what drives `ViClk`. See
+> [Clock Domains](theory-of-operation.md#clock-domains).
+>
+> **`ViClk` must be an 80 MHz clock** (the target's `BusClk` / PllClk80). The shared CDC
+> constraints hard-code 80 MHz and are silently wrong for any other `ViClk` frequency.
+
 ## NiSharedFifoWriter (Target-to-Host, FPGA → Host)
 
 The Writer FIFO accepts data from user HDL logic and transfers it to the host via DMA.
@@ -26,7 +34,7 @@ All user-side signals are synchronous to `ViClk`. They are sampled and driven on
 
 ### What Is a Strobe Signal?
 
-A **request** signal is asserted (`true`) to trigger a single action such as starting or stopping the stream. Asserting it for one `ViClk` cycle is the recommended usage. These requests are crossed into the BusClk domain through a `HandshakeBool` (and the stop request is also consumed as a level), so holding one asserted for several cycles is also legal and harmless — it is acted on once. The FIFO samples requests on the rising edge of `ViClk`.
+A **request** signal is asserted (`true`) to trigger a single action such as starting or stopping the stream. Asserting it for one `ViClk` cycle is the recommended usage. These requests are crossed into the FIFO's DMA-side domain (its `BusClk` port, driven by `DmaClk`) through a `HandshakeBool` (and the stop request is also consumed as a level), so holding one asserted for several cycles is also legal and harmless — it is acted on once. The FIFO samples requests on the rising edge of `ViClk`.
 
 ```
 ViClk:    ─┐  ┌──┐  ┌──┐  ┌──┐  ┌──┐  ┌──
@@ -166,7 +174,7 @@ All user-side signals are synchronous to `ViClk`. They are sampled and driven on
 
 ### What Is a Strobe Signal?
 
-A **request** signal is asserted (`true`) to trigger a single action such as starting or stopping the stream. Asserting it for one `ViClk` cycle is the recommended usage. These requests are crossed into the BusClk domain through a `HandshakeBool` (and the stop request is also consumed as a level), so holding one asserted for several cycles is also legal and harmless — it is acted on once. The FIFO samples requests on the rising edge of `ViClk`.
+A **request** signal is asserted (`true`) to trigger a single action such as starting or stopping the stream. Asserting it for one `ViClk` cycle is the recommended usage. These requests are crossed into the FIFO's DMA-side domain (its `BusClk` port, driven by `DmaClk`) through a `HandshakeBool` (and the stop request is also consumed as a level), so holding one asserted for several cycles is also legal and harmless — it is acted on once. The FIFO samples requests on the rising edge of `ViClk`.
 
 ```
 ViClk:    ─┐  ┌──┐  ┌──┐  ┌──┐  ┌──┐  ┌──

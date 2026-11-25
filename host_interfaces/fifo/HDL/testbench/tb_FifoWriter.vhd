@@ -98,7 +98,8 @@ architecture test of tb_FifoWriter is
   constant kEnableStartStreamIrqBit : natural := 4;
   constant kEnableStopStreamIrqBit  : natural := 6;
 
-  -- Clock periods
+  -- Clock periods for the FIFO BusClk port (DMA side; DmaClk in hardware)
+  -- and ViClk port (user side; the target's BusClk in UserHdl).
   constant kBusClkPeriod : time := 8 ns;
   constant kViClkPeriod  : time := 23 ns;
 

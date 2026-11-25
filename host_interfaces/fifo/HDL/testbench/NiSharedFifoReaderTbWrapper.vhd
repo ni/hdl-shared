@@ -214,5 +214,21 @@ begin
       vStartStreamRequest            => vStartStreamRequest,
       vStopRequestStrobe             => vStopRequestStrobe);
 
+  -- The DMA stream state controller gates its Disabled<->Enabled transitions
+  -- and IRQ clears on StateInDefaultClkDomain, so it must always be a known,
+  -- legal output-stream state (never Flushing) on BusClk once out of reset.
+  StateToDmaMonitor: process(BusClk)
+  begin
+    if rising_edge(BusClk) and not aReset then
+      assert not Is_X(bOutputStreamInterfaceFromFifo.StateInDefaultClkDomain)
+        report "StateInDefaultClkDomain has a metavalue"
+        severity error;
+      assert bOutputStreamInterfaceFromFifo.StateInDefaultClkDomain /=
+             to_StreamStateValue(Flushing)
+        report "StateInDefaultClkDomain reports Flushing for an output stream"
+        severity error;
+    end if;
+  end process StateToDmaMonitor;
+
 
 end structure;
